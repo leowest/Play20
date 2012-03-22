@@ -208,6 +208,15 @@ exec java $* -cp "`dirname $0`/lib/*" """ + config.map(_ => "-Dconfig.file=`dirn
    * @param mainLang mainly scala or java?
    */
   def eclipseCommandSettings(mainLang: String) = {
+    val settingsDir = new File(".settings")
+    val coreSettings = new File(settingsDir.toString+java.io.File.separator+"org.eclipse.core.resources.prefs")
+    if (mainLang == JAVA && coreSettings.exists == false) {
+      IO.createDirectory(settingsDir)
+      IO.write(coreSettings,
+      """|eclipse.preferences.version=1
+         |encoding/<project>=UTF-8""".stripMargin
+      )  
+    }
     import com.typesafe.sbteclipse.core._
     import com.typesafe.sbteclipse.core.EclipsePlugin._
     def transformerFactory =
@@ -217,6 +226,7 @@ exec java $* -cp "`dirname $0`/lib/*" """ + config.map(_ => "-Dconfig.file=`dirn
             (entries: Seq[EclipseClasspathEntry]) => entries :+ EclipseClasspathEntry.Lib(ct + java.io.File.separator + "classes_managed")
           )
       }
+
     EclipsePlugin.eclipseSettings ++ Seq(EclipseKeys.commandName := "eclipsify",
       EclipseKeys.createSrc := EclipseCreateSrc.Default,
       EclipseKeys.preTasks := Seq(compile in Compile),
@@ -984,6 +994,7 @@ exec java $* -cp "`dirname $0`/lib/*" """ + config.map(_ => "-Dconfig.file=`dirn
         println()
         state.fail
       }
+
       case Right(dependencies) => {
         println()
         println("Here are the resolved dependencies of your application:")
@@ -992,20 +1003,20 @@ exec java $* -cp "`dirname $0`/lib/*" """ + config.map(_ => "-Dconfig.file=`dirn
         import scala.Console._
 
         def asTableRow(module: Map[Symbol, Any]): Seq[(String, String, String, Boolean)] = {
-          val formatted = (Seq(module.get('module).map {
+           val formatted = (Seq(module.get('module).map {
             case (org, name, rev) => org + ":" + name + ":" + rev
           }).flatten,
 
             module.get('requiredBy).map {
-              case callers @ Seq(_*) => callers.map {
-                case (org, name, rev) => org + ":" + name + ":" + rev
+              case callers: Seq[_] => callers.map {
+                case (org, name, rev) => org.toString + ":" + name.toString + ":" + rev.toString
               }
             }.flatten.toSeq,
 
             module.get('evictedBy).map {
               case Some(rev) => Seq("Evicted by " + rev)
               case None => module.get('artifacts).map {
-                case artifacts: Seq[String] => artifacts.map("As " + _)
+                case artifacts: Seq[_] => artifacts.map("As " + _.toString)
               }.flatten
             }.flatten.toSeq)
           val maxLines = Seq(formatted._1.size, formatted._2.size, formatted._3.size).max
