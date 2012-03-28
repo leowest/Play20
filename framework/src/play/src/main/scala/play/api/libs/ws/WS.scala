@@ -40,7 +40,7 @@ object WS {
   lazy val client = {
     import play.api.Play.current
     val config = new AsyncHttpClientConfig.Builder()
-      .setConnectionTimeoutInMs(current.configuration.getMilliseconds("ws.timeout").getOrElse(120L).toInt)
+      .setConnectionTimeoutInMs(current.configuration.getMilliseconds("ws.timeout").getOrElse(120000L).toInt)
       .setFollowRedirects(current.configuration.getBoolean("ws.followRedirects").getOrElse(true))
     current.configuration.getString("ws.useragent").map { useragent =>
       config.setUserAgent(useragent)
@@ -72,9 +72,9 @@ object WS {
     _auth.map(data => auth(data._1, data._2, data._3)).getOrElse({})
 
     /**
-     * Add http auth headers
+     * Add http auth headers. Defaults to HTTP Basic.
      */
-    private def auth(username: String, password: String, scheme: AuthScheme): WSRequest = {
+    private def auth(username: String, password: String, scheme: AuthScheme = AuthScheme.BASIC): WSRequest = {
       this.setRealm((new RealmBuilder())
         .setScheme(scheme)
         .setPrincipal(username)
@@ -400,7 +400,12 @@ case class Response(ahcResponse: AHCResponse) {
   /**
    * The response status code.
    */
-  def status: Int = ahcResponse.getStatusCode();
+  def status: Int = ahcResponse.getStatusCode()
+
+  /**
+   * The response status message.
+   */
+  def statusText: String = ahcResponse.getStatusText()
 
   /**
    * Get a response header.
