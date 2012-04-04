@@ -473,30 +473,42 @@ exec java $* -cp "`dirname $0`/lib/*" """ + config.map(_ => "-Dconfig.file=`dirn
 
     // EBean
     if (ebean) {
+      
+      val originalContextClassLoader = Thread.currentThread.getContextClassLoader
+      
       try {
 
         val cp = deps.map(_.data.toURI.toURL).toArray :+ classes.toURI.toURL
+        
+        Thread.currentThread.setContextClassLoader(new java.net.URLClassLoader(cp, ClassLoader.getSystemClassLoader))
 
         import com.avaje.ebean.enhance.agent._
         import com.avaje.ebean.enhance.ant._
         import collection.JavaConverters._
         import com.typesafe.config._
+        
         val cl = ClassLoader.getSystemClassLoader
 
         val t = new Transformer(cp, "debug=-1")
 
         val ft = new OfflineFileTransform(t, cl, classes.getAbsolutePath, classes.getAbsolutePath)
 
-        //model definition only can come from bundled application.conf at this point and "conf" folder is not visible as a resource from this classloader, so
-
         val config = ConfigFactory.load(ConfigFactory.parseFileAnySyntax(new File("conf/application.conf")))
 
         val models = try {
           config.getConfig("ebean").entrySet.asScala.map(_.getValue.unwrapped).toSet.mkString(",")
         } catch { case e: ConfigException.Missing => "models.*" }
-        ft.process(models)
+        
+        try {
+          ft.process(models)
+        } catch {
+          case _ =>
+        }
+        
       } catch {
-        case _ =>
+        case e => throw e
+      } finally {
+        Thread.currentThread.setContextClassLoader(originalContextClassLoader)
       }
     }
 

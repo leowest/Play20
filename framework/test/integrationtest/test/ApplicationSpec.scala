@@ -112,6 +112,53 @@ class ApplicationSpec extends Specification {
         }
       }
     }
+
+    "bind int parameters from the query string as a list" in {
+      running(FakeApplication()) {
+        "from a list of numbers" in {
+          val Some(result) = routeAndCall(FakeRequest(GET, controllers.routes.Application.takeList(List(1, 2, 3)).url))
+          contentAsString(result) must equalTo ("123")
+        }
+        "from a list of numbers and letters" in {
+          val Some(result) = routeAndCall(FakeRequest(GET, "/take-list?x=1&x=a&x=2"))
+          contentAsString(result) must equalTo ("12")
+        }
+        "when there is no parameter at all" in {
+          val Some(result) = routeAndCall(FakeRequest(GET, "/take-list"))
+          contentAsString(result) must equalTo ("")
+        }
+        "using the Java API" in {
+          val Some(result) = routeAndCall(FakeRequest(GET, "/take-list-java?x=1&x=2&x=3"))
+          contentAsString(result) must equalTo ("3 elements")
+        }
+      }
+    }
+
+    "return jsonp" in {
+      "Scala API" in {
+        running(FakeApplication()) {
+          val Some(result) = routeAndCall(FakeRequest(GET, controllers.routes.Application.jsonp("baz").url))
+          contentAsString(result) must equalTo ("baz({\"foo\":\"bar\"});")
+          contentType(result) must equalTo (Some("text/javascript"))
+        }
+      }
+      "Java API" in {
+        running(FakeApplication()) {
+          val Some(result) = routeAndCall(FakeRequest(GET, controllers.routes.JavaApi.jsonpJava("baz").url))
+          contentAsString(result) must equalTo ("baz({\"foo\":\"bar\"});")
+          contentType(result) must equalTo (Some("text/javascript"))
+        }
+      }
+    }
+
+    "urldecode correctly parameters from path and query string" in {
+      running(FakeApplication()) {
+        val Some(result) = routeAndCall(FakeRequest(GET, "/urldecode/2%2B2?q=2%2B2"))
+        contentAsString(result) must contain ("fromPath=2+2")
+        contentAsString(result) must contain ("fromQueryString=2+2")
+      }
+    }
+
   }
-   
+
 }
