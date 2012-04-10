@@ -65,7 +65,33 @@ class ApplicationSpec extends Specification {
 
       }
     }
-    
+
+    def javaResult(result: play.api.mvc.Result) =
+      new play.mvc.Result {
+        def getWrappedResult = result
+      }
+
+    "execute json with content type" in {
+     running(FakeApplication()) {
+         val Some(result) = routeAndCall(FakeRequest(GET, "/jsonWithContentType"))
+         status(result) must equalTo(OK)
+         contentType(result) must equalTo(Some("application/json"))
+         charset(result) must equalTo(None)
+         play.test.Helpers.charset(javaResult(result)) must equalTo(null)
+       }
+     }
+
+
+    "execute json with content type and charset" in {
+     running(FakeApplication()) {
+         val Some(result) = routeAndCall(FakeRequest(GET, "/jsonWithCharset"))
+         status(result) must equalTo(OK)
+         contentType(result) must equalTo(Some("application/json"))
+         charset(result) must equalTo(Some("utf-8"))
+         play.test.Helpers.charset(javaResult(result)) must equalTo("utf-8")
+       }
+     }
+
     "not serve asset directories" in {
       running(FakeApplication()) {
         val Some(result) = routeAndCall(FakeRequest(GET, "/public//"))
@@ -156,6 +182,36 @@ class ApplicationSpec extends Specification {
         val Some(result) = routeAndCall(FakeRequest(GET, "/urldecode/2%2B2?q=2%2B2"))
         contentAsString(result) must contain ("fromPath=2+2")
         contentAsString(result) must contain ("fromQueryString=2+2")
+      }
+    }
+
+    "test Accept header mime-types" in {
+      import play.api.http.HeaderNames._
+      "Scala API" in {
+        running(FakeApplication()) {
+          val url = controllers.routes.Application.accept().url
+          val Some(result) = routeAndCall(FakeRequest(GET, url).withHeaders(ACCEPT -> "text/html,application/xml;q=0.5"))
+          contentAsString(result) must equalTo ("html")
+
+          val Some(result2) = routeAndCall(FakeRequest(GET, url).withHeaders(ACCEPT -> "text/*"))
+          contentAsString(result2) must equalTo ("html")
+
+          val Some(result3) = routeAndCall(FakeRequest(GET, url).withHeaders(ACCEPT -> "application/json"))
+          contentAsString(result3) must equalTo ("json")
+        }
+      }
+      "Java API" in {
+        running(FakeApplication()) {
+          val url = controllers.routes.JavaApi.accept().url
+          val Some(result) = routeAndCall(FakeRequest(GET, url).withHeaders(ACCEPT -> "text/html,application/xml;q=0.5"))
+          contentAsString(result) must equalTo ("html")
+
+          val Some(result2) = routeAndCall(FakeRequest(GET, url).withHeaders(ACCEPT -> "text/*"))
+          contentAsString(result2) must equalTo ("html")
+
+          val Some(result3) = routeAndCall(FakeRequest(GET, url).withHeaders(ACCEPT -> "application/json"))
+          contentAsString(result3) must equalTo ("json")
+        }
       }
     }
 

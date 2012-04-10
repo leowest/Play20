@@ -147,15 +147,13 @@ trait PlaySettings {
 
     routesImport := Seq.empty[String],
 
-    playIntellij <<= playIntellijTask,
-
     playHash <<= playHashTask,
 
     // Assets
 
     playAssetsDirectories := Seq.empty[File],
-    
-    playExternalAssets := Seq.empty[(File,File => PathFinder,String)],
+
+    playExternalAssets := Seq.empty[(File, File => PathFinder, String)],
 
     playAssetsDirectories <+= baseDirectory / "public",
 
