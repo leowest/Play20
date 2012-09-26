@@ -567,7 +567,7 @@ object MimeTypes {
         ppam=application/vnd.ms-powerpoint.addin.macroEnabled.12
         sldx=application/vnd.openxmlformats-officedocument.presentationml.slide
         sldm=application/vnd.ms-powerpoint.slide.macroEnabled.12
-        thmx=application/vnd.ms-officetheme 
+        thmx=application/vnd.ms-officetheme
         onetoc=application/onenote
         onetoc2=application/onenote
         onetmp=application/onenote
@@ -586,6 +586,6 @@ object MimeTypes {
         xpi=application/x-xpinstall
 
     """.split('\n').map(_.trim).filter(_.size > 0).filter(_(0) != '#').map(_.split('=')).map(parts =>
-      parts(0) -> parts.drop(1).mkString).toMap.mapValues(_ + "; charset=UTF-8")
+      parts(0) -> parts.drop(1).mkString).toMap
 
 }
