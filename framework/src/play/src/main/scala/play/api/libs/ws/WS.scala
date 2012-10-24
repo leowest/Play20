@@ -367,6 +367,9 @@ object WS {
      */
     def post[T](body: T)(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Response] = prepare("POST", body).execute
 
+
+    def post(body: Enumerator[Array[Byte]]): Future[Response] = prepare("POST", body).execute
+
     /**
      * performs a POST with supplied body
      * @param consumer that's handling the response
@@ -377,6 +380,8 @@ object WS {
      * Perform a PUT on the request asynchronously.
      */
     def put[T](body: T)(implicit wrt: Writeable[T], ct: ContentTypeOf[T]): Future[Response] = prepare("PUT", body).execute
+
+    def put(body: Enumerator[Array[Byte]]): Future[Response] = prepare("PUT", body).execute
 
     /**
      * performs a PUT with supplied body
@@ -412,6 +417,35 @@ object WS {
       virtualHost.map { v =>
         request.setVirtualHost(v)
       }
+      request
+    }
+
+    private[play] def prepare(method: String, body: Enumerator[Array[Byte]]) = {
+      import com.ning.http.client.providers.netty.FeedableBodyGenerator
+      import java.nio.ByteBuffer
+
+      val bodyGenerator = new FeedableBodyGenerator();
+
+      val request = new WSRequest(method, auth, calc).setUrl(url)
+        .setHeaders(headers)
+        .setQueryString(queryString)
+        .setBody(bodyGenerator)
+      followRedirects.map(request.setFollowRedirects(_))
+      timeout.map { t: Int =>
+        val config = new PerRequestConfig()
+        config.setRequestTimeoutInMs(t)
+        request.setPerRequestConfig(config)
+      }
+      virtualHost.map { v =>
+        request.setVirtualHost(v)
+      }
+
+      val it = Iteratee.fold[Array[Byte], Unit](()) { (_, chunk) =>
+        bodyGenerator.feed(ByteBuffer.wrap(chunk), true)
+      }.mapDone{ _ =>
+        bodyGenerator.feed(ByteBuffer.wrap(Array[Byte]()), false)
+      }
+      body(it)
       request
     }
 
