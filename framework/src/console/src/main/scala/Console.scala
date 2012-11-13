@@ -130,7 +130,7 @@ object Console {
         } else {
 
           import giter8._
-          import G8Helpers.Regs._
+          import giter8.G8Helpers.Regs._
 
           val repo = template._1
           val appName = template._2
@@ -161,19 +161,23 @@ object Console {
           def toGitRepo(user: String, proj: String) =
             "git://github.com/%s/%s.g8.git".format(user, proj)
 
+          // Fix Git regex
+          val GitRepo = "^(git[@|://].*)".r
+
           val parsed = repo.split(" ").partition { s => Param.pattern.matcher(s).matches } match {
             case (params, Array(Local(repo))) =>
               Right(repo, None, params)
             case (params, Array(Local(repo), Branch(_), branch)) =>
               Right(repo, Some(branch), params)
+            case (params, Array(GitRepo(remote))) =>
+              Right(remote, None, params)
+            case (params, Array(GitRepo(remote), Branch(_), branch)) =>
+              Right(remote, Some(branch), params)
             case (params, Array(Repo(user, proj))) =>
               Right(toGitRepo(user, proj), None, params)
-            case (params, Array(Repo(user, proj), Branch(_), branch)) =>
+            case (params, Array(Repo(user, proj), Branch(_), branch)) => {
               Right(toGitRepo(user, proj), Some(branch), params)
-            case (params, Array(Git(remote))) =>
-              Right(remote, None, params)
-            case (params, Array(Git(remote), Branch(_), branch)) =>
-              Right(remote, Some(branch), params)
+            }
             case _ =>
               Left(usage)
           }
