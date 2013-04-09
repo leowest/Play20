@@ -1,54 +1,63 @@
-package play.api.data.validation
+package play.api.data.validation2
 
-object Validation {
+object Validations {
   type Mapping[Err, From, To] = (From => Validation[Err, To])
   type Constraint[T] = Mapping[String, T, T]
   type VA[Key, To] = Validation[Seq[(Key, Seq[String])], To]
 }
 
-sealed trait Validation[+E, +A]
-final case class Success[E, A](a: A) extends Validation[E, A]
-final case class Failure[E, A](e: E) extends Validation[E, A]
+sealed trait Validation[E, +A] {
 
-sealed trait PathNode
-case class KeyPathNode(key: String) extends PathNode
-case class Path(path: List[KeyPathNode] = List()) {
-  import Validation._
+  def map[X](f: A => X): Validation[E, X] = this match {
+    case Success(v) => Success(f(v))
+    case e: Failure[E] => e
+  }
 
-  def \(child: String) = Path(path :+ KeyPathNode(child))
-
-  // ((Root \ "age").validate[Int]).apply(mock)
-  def apply[From, To](data: From)(implicit m: Path => Mapping[String, From, To]): Validation[String, To] =
-    m(this)(data)
-
+  def flatMap[X](f: A => Validation[E, X]): Validation[E, X] = this match {
+    case Success(v) => f(v)
+    case e: Failure[E] => e
+  }
 }
-object Path extends Path(List.empty)
+final case class Success[E, A](a: A) extends Validation[E, A]
+final case class Failure[E](errors: Seq[E]) extends Validation[E, Nothing]
 
-object Mappings {
-  import Validation._
+object Failure {
+  import play.api.libs.functional.Monoid
 
-  implicit def fromMap(p: Path): Mapping[String, Map[String, Seq[String]], Seq[String]] =
-    _.get(p.path.head.key).map(Success.apply).getOrElse(Failure("validation.required"))
-
-  import play.api.libs.json.{ KeyPathNode => JSKeyPathNode, JsPath, JsValue }
-  private def pathToJsPath(p: Path): JsPath =
-    JsPath(p.path.map(k => JSKeyPathNode(k.key)))
-
-  implicit def fromJson(p: Path): Mapping[String, JsValue, Seq[JsValue]] = { json =>
-    pathToJsPath(p)(json) match {
-      case Nil => Failure("validation.required")
-      case js => Success(js)
-    }
+  def merge[E](e1: Failure[E], e2: Failure[E]): Failure[E] = {
+    Failure(e1.errors ++ e2.errors)
   }
 }
 
-object Constraints {
-  import scala.util.matching.Regex
-  import Validation._
 
-  def validateWith[From](msg: String)(pred: From => Boolean): Constraint[From] =
-    v => if(!pred(v)) Failure(msg) else Success(v)
+object Validation {
 
-  def notEmptyText = validateWith("validation.notemptytext"){ !(_: String).isEmpty }
+  /*
+  import play.api.libs.functional._
 
+  implicit def alternativeValidation(implicit a: Applicative[Validation]): Alternative[Validation] = new Alternative[Validation] {
+    val app = a
+    def |[E1, E2 >: E1, A, B >: A](alt1: Validation[E1, A], alt2 :Validation[E2, B]): Validation[E2, B] = (alt1, alt2) match {
+      case (Failure(e), Success(v)) => Success(v)
+      case (Success(v), _) => Success(v)
+      case (Failure(e1), Failure(e2)) => Failure(Failure.merge(e1, e2))
+    }
+    def empty: Failure[Nothing, Nothing] = Failure(Seq())
+  }
+
+  type VA[A] = Validation[String, A]
+  implicit val applicativeVA: Applicative[VA] = new Applicative[VA] {
+
+    def pure[A](a:A): VA[A] = Success(a)
+
+    def map[A, B](m: VA[A], f: A => B): VA[B] = m.map(f)
+
+    def apply[A, B](mf:VA[A => B], ma: VA[A]): VA[B] = (mf, ma) match {
+      case (Success(f,_), Success(a,_)) => Success(f(a))
+      case (Failure(e1), Failure(e2)) => Failure.merge(e1, e2)
+      case (Failure(e), _) => Failure(e)
+      case (_, Failure(e)) => Failure(e)
+    }
+  }
+  */
 }

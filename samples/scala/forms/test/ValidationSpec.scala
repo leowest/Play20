@@ -18,18 +18,29 @@ class ValidationSpec extends Specification {
     "lastname" -> "Tournay",
     "age" -> 27)
 
-  import play.api.data.validation._
-  import Mappings._
+  import play.api.data.validation2._
+  import Extractors._
+  import Constraints._
 
-  "Validation" should {
+  val name: Extractor[String] = (Path \ "firstname").validate(notEmptyText)
 
-    "extract data from a Map" in {
-      (Path \ "firstname")(userMap) mustEqual(Success(Seq("Julien")))
+  "Map Validation" should {
+    "extract data" in {
+      (Path \ "firstname").validate[Seq[String]](userMap) mustEqual(Success(Seq("Julien")))
     }
 
-    "extract data from a JsValue" in {
-      (Path \ "firstname")(userJson) mustEqual(Success(Seq(JsString("Julien"))))
+    "validate data" in {
+      name(userMap) mustEqual(Success("Julien"))
+    }
+  }
+
+  "Json Validation" should {
+    "extract data" in {
+      (Path \ "firstname").validate[String](userJson) mustEqual(Success("Julien"))
     }
 
+    "validate data" in {
+      name(userJson) mustEqual(Success("Julien"))
+    }
   }
 }
