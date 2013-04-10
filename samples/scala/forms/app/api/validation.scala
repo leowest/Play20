@@ -59,17 +59,6 @@ object syntax {
   import Validations._
   import play.api.libs.functional._
 
-  /*
-  implicit def alternativeValidation(implicit a: Applicative[Validation]): Alternative[Validation] = new Alternative[Validation] {
-    val app = a
-    def |[E1, E2 >: E1, A, B >: A](alt1: Validation[E1, A], alt2 :Validation[E2, B]): Validation[E2, B] = (alt1, alt2) match {
-      case (Failure(e), Success(v)) => Success(v)
-      case (Success(v), _) => Success(v)
-      case (Failure(e1), Failure(e2)) => Failure(Failure.merge(e1, e2))
-    }
-    def empty: Failure[Nothing, Nothing] = Failure(Seq())
-  }
-
   type VA[A] = Validation[String, A]
   implicit val applicativeVA: Applicative[VA] = new Applicative[VA] {
 
@@ -78,16 +67,28 @@ object syntax {
     def map[A, B](m: VA[A], f: A => B): VA[B] = m.map(f)
 
     def apply[A, B](mf:VA[A => B], ma: VA[A]): VA[B] = (mf, ma) match {
-      case (Success(f,_), Success(a,_)) => Success(f(a))
-      case (Failure(e1), Failure(e2)) => Failure.merge(e1, e2)
+      case (Success(f), Success(a)) => Success(f(a))
+      case (Failure(e1), Failure(e2)) => Failure(e1 ++ e2)
       case (Failure(e), _) => Failure(e)
       case (_, Failure(e)) => Failure(e)
     }
   }
-  */
+
+  implicit val applicativeExtractor = new Applicative[Extractor] {
+    def pure[A](a: A) = new Extractor[A] {
+      // XXX: this implicit does not make any kind of sense
+      def apply[S](data: S)(implicit m: F[S]) = Success(a)
+    }
+
+    def map[A, B](e: Extractor[A], f: A => B) = new Extractor[B] {
+      def apply[S](data: S)(implicit m: F[S]) = ???
+    }
+
+    def apply[A, B](mf: Extractor[A => B], ma: Extractor[A]) = ???
+  }
 
   implicit def monoidConstraint[T] = new Monoid[Constraint[T]] {
-    override def append(c1: Constraint[T], c2: Constraint[T]) = v => c1(v) *> (c2(v))
-    override def identity = Constraints.noConstraint[T]
+    def append(c1: Constraint[T], c2: Constraint[T]) = v => c1(v) *> (c2(v))
+    def identity = Constraints.noConstraint[T]
   }
 }

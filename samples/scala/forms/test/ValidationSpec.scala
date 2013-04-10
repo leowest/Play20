@@ -70,7 +70,7 @@ class ValidationSpec extends Specification {
       (Path \ "firstname").validate[Int](userJson) mustEqual(Failure(Seq((Path \ "firstname") -> Seq("validation.int"))))
     }
 
-    "compose validation" in {
+    "compose constraints" in {
       import syntax._
       // TODO: create MonoidOps
       val composed = monoidConstraint.append(nonEmptyText, minLength(3))
@@ -84,6 +84,15 @@ class ValidationSpec extends Specification {
       val lastname = (Path \ "lastname").validate(composed)
       lastname(userMap) mustEqual(err)
       lastname(userJson) mustEqual(err)
+    }
+
+    "compose validations" in {
+      import syntax._
+      import play.api.libs.functional.syntax._
+
+      val user = (Path \ "firstname").validate(nonEmptyText) ~
+                 (Path \ "lastname").validate(nonEmptyText) ~
+                 (Path \ "age").validate[Int]
     }
   }
 

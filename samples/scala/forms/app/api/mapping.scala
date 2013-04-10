@@ -5,8 +5,10 @@ import Validations._
 
 // XXX: This is almost a Mapping
 trait Extractor[To]{
-  def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]): Validation[(Path, Seq[String]), To]
+  type F[S] = Path => Mapping[String, S, To]
+  def apply[S](data: S)(implicit m: F[S]): Validation[(Path, Seq[String]), To]
 }
+
 sealed trait PathNode
 case class KeyPathNode(key: String) extends PathNode
 case class Path(path: List[KeyPathNode] = List()) {
@@ -19,26 +21,26 @@ case class Path(path: List[KeyPathNode] = List()) {
   def compose(p: Path): Path = Path(this.path ++ p.path)
 
   def validate[To]: Extractor[To] = validate(Constraints.noConstraint: Constraint[To])
+
   def validate[To](v: Constraint[To]): Extractor[To] = {
     val path = this
     new Extractor[To] {
-      def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]) = {
+      def apply[S](data: S)(implicit m: F[S]) =
         m(path)(data).flatMap(v).fail.map(errs => Seq(path -> errs))
-      }
     }
   }
 
   def validate[To](sub: Extractor[To]): Extractor[To] = {
     val parent = this
     new Extractor[To] {
-      def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]) =
+      def apply[S](data: S)(implicit m: F[S]) =
         sub(data){ path => m(parent.compose(path)) }
     }
   }
 
   override def toString = "Path \\ " + path.mkString(" \\ ")
-
 }
+
 object Path extends Path(List.empty)
 
 object Extractors {
