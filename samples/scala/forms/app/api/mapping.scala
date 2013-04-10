@@ -1,7 +1,9 @@
 package play.api.data.validation2
 
+import scala.language.implicitConversions
 import Validations._
 
+// This is almost a Mapping
 trait Extractor[To]{
   def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]): Validation[String, To]
 }
@@ -12,28 +14,45 @@ case class Path(path: List[KeyPathNode] = List()) {
   import play.api.libs.functional.syntax._
   import Validation._
 
-  def \(child: String) = Path(path :+ KeyPathNode(child))
+  def \(child: String): Path = this \ KeyPathNode(child)
+  def \(child: KeyPathNode): Path = Path(path :+ child)
 
-  def validate[To]: Extractor[To] = validate(Constraints.noConstraint)
+  def compose(p: Path): Path = Path(this.path ++ p.path)
+
+  def validate[To]: Extractor[To] = validate(Constraints.noConstraint: Constraint[To])
 
   def validate[To](v: Constraint[To]): Extractor[To] = {
     val path = this
     new Extractor[To] {
-      def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]): Validation[String, To] = path(data).flatMap(v)
+      def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]): Validation[String, To] =
+        path(data).flatMap(v)
     }
   }
+
+  /*
+  (__ \ "informations").validate(
+    (__ \ "label").validate[String])
+  */
+  def validate[To](sub: Extractor[To]): Extractor[To] = {
+    val parent = this
+    new Extractor[To] {
+      def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]): Validation[String, To] =
+        sub(data){ path => m(parent.compose(path)) }
+    }
+  }
+
+  override def toString = "Path \\ " + path.mkString(" \\ ")
 
 }
 object Path extends Path(List.empty)
 
 object Extractors {
 
-  // TODO: recursive map traversal
   implicit def pickAll(p: Path): Mapping[String, Map[String, Seq[String]], Seq[String]] =
-    _.get(p.path.head.key).map(Success.apply[String, Seq[String]] _).getOrElse(Failure(Seq("validation.required")))
-  implicit def pickFirst(p: Path): Mapping[String, Map[String, Seq[String]], String] = data =>
-    pickAll(p)(data).map(_.head)
+    _.get(p.path.map(_.key).mkString(".")).map(Success.apply[String, Seq[String]] _).getOrElse(Failure(Seq("validation.required")))
 
+  implicit def pickFirst(p: Path): Mapping[String, Map[String, Seq[String]], String] =
+    data => pickAll(p)(data).map(_.head)
 
   import play.api.libs.json.{ KeyPathNode => JSKeyPathNode, _ }
   private def pathToJsPath(p: Path): JsPath =
@@ -61,7 +80,7 @@ object Constraints {
   def validateWith[From](msg: String)(pred: From => Boolean): Constraint[From] =
     v => if(!pred(v)) Failure(Seq(msg)) else Success(v)
 
-  def notEmptyText = validateWith("validation.notemptytext"){ !(_: String).isEmpty }
+  def nonEmptyText = validateWith("validation.notemptytext"){ !(_: String).isEmpty }
   def noConstraint[From]: Constraint[From] = Success(_)
 
 }

@@ -13,6 +13,12 @@ class ValidationSpec extends Specification {
     "lastname" -> Seq("Tournay"),
     "age" -> Seq("27"))
 
+  val userMapWithInfo =
+    userMap ++ Map(
+      "informations.label" -> Seq("Personal"),
+      "informations.email" -> Seq("fakecontact@gmail.com"),
+      "informations.phones" -> Seq("01.23.45.67.89", "98.76.54.32.10"))
+
   val userJson = Json.obj(
     "firstname" -> "Julien",
     "lastname" -> "Tournay",
@@ -22,7 +28,7 @@ class ValidationSpec extends Specification {
   import Extractors._
   import Constraints._
 
-  val name: Extractor[String] = (Path \ "firstname").validate(notEmptyText)
+  val name = (Path \ "firstname").validate(nonEmptyText)
 
   "Map Validation" should {
     "extract data" in {
@@ -31,6 +37,13 @@ class ValidationSpec extends Specification {
 
     "validate data" in {
       name(userMap) mustEqual(Success("Julien"))
+    }
+
+    "validate deep" in {
+      val v = (Path \ "informations").validate(
+                (Path \ "label").validate[String])
+
+      v(userMapWithInfo) mustEqual(Success("Personal"))
     }
   }
 
