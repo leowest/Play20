@@ -87,8 +87,7 @@ object syntax {
   */
 
   implicit def monoidConstraint[T] = new Monoid[Constraint[T]] {
-    override def append(c1: Constraint[T], c2: Constraint[T]) =
-      v => c1(v) *> (c2(v))
+    override def append(c1: Constraint[T], c2: Constraint[T]) = v => c1(v) *> (c2(v))
     override def identity = Constraints.noConstraint[T]
   }
 }

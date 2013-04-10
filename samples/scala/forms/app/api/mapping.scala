@@ -72,7 +72,7 @@ object Extractors {
   implicit def jsonPickInt(p: Path): Mapping[String, JsValue, Int] = { json =>
     jsonPickJson(p)(json).flatMap {
       case JsNumber(v) :: _ => Success(v.toInt)
-      case _ => Failure(Seq("validation.type-mismatch"))
+      case _ => Failure(Seq("validation.int"))
     }
   }
 

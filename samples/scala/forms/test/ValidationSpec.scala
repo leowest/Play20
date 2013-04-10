@@ -65,6 +65,25 @@ class ValidationSpec extends Specification {
 
       age(userMap) mustEqual(Success(27))
       age(userJson) mustEqual(Success(27))
+
+      (Path \ "firstname").validate[Int](userMap) mustEqual(Failure(Seq((Path \ "firstname") -> Seq("validation.int"))))
+      (Path \ "firstname").validate[Int](userJson) mustEqual(Failure(Seq((Path \ "firstname") -> Seq("validation.int"))))
+    }
+
+    "compose validation" in {
+      import syntax._
+      // TODO: create MonoidOps
+      val composed = monoidConstraint.append(nonEmptyText, minLength(3))
+
+      val firstname = (Path \ "firstname").validate(composed)
+      firstname(userMap) mustEqual(Success("Julien"))
+      firstname(userJson) mustEqual(Success("Julien"))
+
+      val err = Failure(Seq((Path \ "lastname") -> Seq("validation.nonemptytext", "validation.minLength")))
+
+      val lastname = (Path \ "lastname").validate(composed)
+      lastname(userMap) mustEqual(err)
+      lastname(userJson) mustEqual(err)
     }
   }
 
