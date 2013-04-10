@@ -52,10 +52,19 @@ class ValidationSpec extends Specification {
     }
 
     "validate deep" in {
-      val v = (Path \ "informations").validate((Path \ "label").validate[String])
+      val v =
+        (Path \ "informations").validate(
+          (Path \ "label").validate[String])
 
       v(userMap) mustEqual(Success("Personal"))
       v(userJson) mustEqual(Success("Personal"))
+    }
+
+    "coerce type" in {
+      val age = (Path \ "age").validate[Int]
+
+      age(userMap) mustEqual(Success(27))
+      age(userJson) mustEqual(Success(27))
     }
   }
 

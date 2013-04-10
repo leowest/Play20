@@ -17,6 +17,14 @@ sealed trait Validation[E, +A] {
     case Failure(e) => Failure(e)
   }
 
+  // TODO: rename
+  def *>[B](o: Validation[E, B]): Validation[E, B] = (this, o) match {
+    case (Success(_), Success(v)) => Success(v)
+    case (Success(_), Failure(e)) => Failure(e)
+    case (Failure(e), Success(_)) => Failure(e)
+    case (Failure(e1), Failure(e2)) => Failure(e1 ++ e2)
+  }
+
   def fail = FailProjection(this)
   def success = SuccessProjection(this)
 }
@@ -46,11 +54,12 @@ object Failure {
 }
 
 
-object Validation {
+object syntax {
 
-  /*
+  import Validations._
   import play.api.libs.functional._
 
+  /*
   implicit def alternativeValidation(implicit a: Applicative[Validation]): Alternative[Validation] = new Alternative[Validation] {
     val app = a
     def |[E1, E2 >: E1, A, B >: A](alt1: Validation[E1, A], alt2 :Validation[E2, B]): Validation[E2, B] = (alt1, alt2) match {
@@ -76,4 +85,10 @@ object Validation {
     }
   }
   */
+
+  implicit def monoidConstraint[T] = new Monoid[Constraint[T]] {
+    override def append(c1: Constraint[T], c2: Constraint[T]) =
+      v => c1(v) *> (c2(v))
+    override def identity = Constraints.noConstraint[T]
+  }
 }
