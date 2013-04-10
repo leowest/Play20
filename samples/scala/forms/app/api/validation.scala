@@ -7,24 +7,25 @@ object Validations {
 }
 
 sealed trait Validation[E, +A] {
-
   def map[X](f: A => X): Validation[E, X] = this match {
     case Success(v) => Success(f(v))
-    case e: Failure[E] => e
+    case Failure(e) => Failure(e)
   }
 
   def flatMap[X](f: A => Validation[E, X]): Validation[E, X] = this match {
     case Success(v) => f(v)
-    case e: Failure[E] => e
+    case Failure(e) => Failure(e)
   }
+
+  def fail = ???
 }
 final case class Success[E, A](a: A) extends Validation[E, A]
-final case class Failure[E](errors: Seq[E]) extends Validation[E, Nothing]
+final case class Failure[E, A](errors: Seq[E]) extends Validation[E, A]
 
 object Failure {
   import play.api.libs.functional.Monoid
 
-  def merge[E](e1: Failure[E], e2: Failure[E]): Failure[E] = {
+  def merge[E, A](e1: Failure[E, A], e2: Failure[E, A]): Failure[E, A] = {
     Failure(e1.errors ++ e2.errors)
   }
 }

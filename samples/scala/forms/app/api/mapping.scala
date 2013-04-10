@@ -5,7 +5,7 @@ import Validations._
 
 // This is almost a Mapping
 trait Extractor[To]{
-  def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]): Validation[String, To]
+  def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]): Validation[String, To] //: Validation[(Path, Seq[String]), To]
 }
 sealed trait PathNode
 case class KeyPathNode(key: String) extends PathNode
@@ -20,23 +20,19 @@ case class Path(path: List[KeyPathNode] = List()) {
   def compose(p: Path): Path = Path(this.path ++ p.path)
 
   def validate[To]: Extractor[To] = validate(Constraints.noConstraint: Constraint[To])
-
   def validate[To](v: Constraint[To]): Extractor[To] = {
     val path = this
     new Extractor[To] {
-      def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]): Validation[String, To] =
-        path(data).flatMap(v)
+      def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]) = {
+        m(path)(data).flatMap(v)
+      }
     }
   }
 
-  /*
-  (__ \ "informations").validate(
-    (__ \ "label").validate[String])
-  */
   def validate[To](sub: Extractor[To]): Extractor[To] = {
     val parent = this
     new Extractor[To] {
-      def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]): Validation[String, To] =
+      def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]) =
         sub(data){ path => m(parent.compose(path)) }
     }
   }
