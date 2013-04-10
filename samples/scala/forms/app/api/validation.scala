@@ -17,8 +17,23 @@ sealed trait Validation[E, +A] {
     case Failure(e) => Failure(e)
   }
 
-  def fail = ???
+  def fail = FailProjection(this)
+  def success = SuccessProjection(this)
 }
+
+case class FailProjection[E, +A](v: Validation[E, A]) {
+  def map[F](f: Seq[E] => Seq[F]): Validation[F, A] = v match {
+    case Success(v) => Success(v)
+    case Failure(e) => Failure(f(e))
+  }
+}
+case class SuccessProjection[E, +A](v: Validation[E, A]) {
+  def map[B](f: A => B): Validation[E, B] = v match {
+    case Success(v) => Success(f(v))
+    case Failure(e) => Failure(e)
+  }
+}
+
 final case class Success[E, A](a: A) extends Validation[E, A]
 final case class Failure[E, A](errors: Seq[E]) extends Validation[E, A]
 

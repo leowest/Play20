@@ -5,7 +5,7 @@ import Validations._
 
 // This is almost a Mapping
 trait Extractor[To]{
-  def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]): Validation[String, To] //: Validation[(Path, Seq[String]), To]
+  def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]): Validation[(Path, Seq[String]), To]
 }
 sealed trait PathNode
 case class KeyPathNode(key: String) extends PathNode
@@ -24,7 +24,7 @@ case class Path(path: List[KeyPathNode] = List()) {
     val path = this
     new Extractor[To] {
       def apply[Source](data: Source)(implicit m: Path => Mapping[String, Source, To]) = {
-        m(path)(data).flatMap(v)
+        m(path)(data).flatMap(v).fail.map(errs => Seq(path -> errs))
       }
     }
   }
@@ -76,7 +76,7 @@ object Constraints {
   def validateWith[From](msg: String)(pred: From => Boolean): Constraint[From] =
     v => if(!pred(v)) Failure(Seq(msg)) else Success(v)
 
-  def nonEmptyText = validateWith("validation.notemptytext"){ !(_: String).isEmpty }
+  def nonEmptyText = validateWith("validation.nonemptytext"){ !(_: String).isEmpty }
   def noConstraint[From]: Constraint[From] = Success(_)
 
 }
