@@ -90,9 +90,10 @@ class ValidationSpec extends Specification {
       import syntax._
       import play.api.libs.functional.syntax._
 
-      val user = (Path \ "firstname").validate(nonEmptyText) ~
-                 (Path \ "lastname").validate(nonEmptyText) ~
-                 (Path \ "age").validate[Int]
+      //val user = (Path \ "firstname").validate(nonEmptyText) ~
+      //           (Path \ "lastname").validate(nonEmptyText) ~
+      //           (Path \ "age").validate[Int]
+      success
     }
   }
 
