@@ -92,7 +92,9 @@ class ValidationSpec extends Specification {
 
       val x = (Path \ "firstname").validate[M, String](nonEmptyText) _
       val y = (Path \ "lastname").validate[M, String](nonEmptyText) _
+
       val ops = toFunctionalBuilderOps[({type f[To] = M => VA[To]})#f, String](x)
+
       val userFromMap = ops ~ y
 
       success

@@ -74,13 +74,12 @@ object syntax {
   //  }
   //}
 
-  // uuuuhhhhh... nasty
   implicit def applicativeFA[From] = new Applicative[({type f[To] = From => VA[To]})#f] {
-    override def pure[A](a: A): ({type f[To] = From => VA[To]})#f[A] =
+    override def pure[A](a: A): From => VA[A] =
       _ => Success(a)
-    override def map[A, B](m: ({type f[To] = From => VA[To]})#f[A], f: A => B): ({type f[To] = From => VA[To]})#f[B] =
+    override def map[A, B](m: (From => VA[A]), f: A => B): From => VA[B] =
       d => m(d).map(f)
-    override def apply[A, B](mf: ({type f[To] = From => VA[To]})#f[A => B], ma: ({type f[To] = From => VA[To]})#f[A]): ({type f[To] = From => VA[To]})#f[B] =
+    override def apply[A, B](mf: (From => VA[A => B]), ma: (From => VA[A])): From => VA[B] =
       d => ma(d).flatMap{ a => mf(d).map(_(a)) }
   }
 
