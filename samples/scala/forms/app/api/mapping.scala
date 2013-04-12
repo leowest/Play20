@@ -14,14 +14,14 @@ case class Path(path: List[KeyPathNode] = List()) {
 
   def compose(p: Path): Path = Path(this.path ++ p.path)
 
-  def validate[From, To](data: From)(implicit m: Path => Mapping[String, From, To]): Validation[(Path, Seq[String]), To] =
+  def validate[From, To](data: From)(implicit m: Path => Mapping[String, From, To]): VA[To] =
     validate(Constraints.noConstraint[To])(data)
 
-  def validate[From, To](v: Constraint[To])(data: From)(implicit m: Path => Mapping[String, From, To]): Validation[(Path, Seq[String]), To] =
-    m(this)(data).flatMap(v).fail.map(errs => Seq(this -> errs))
+  def validate[From, To](v: Constraint[To])(data: From)(implicit m: Path => Mapping[String, From, To]): VA[To] =
+    m(this)(data).flatMap(v).fail.map(errs => Seq(Seq(this -> errs)))
 
-  def validateSub[From, To](sub: Mapping[(Path, Seq[String]), From, To])(data: From)(implicit m: Path => Mapping[String, From, To],  e: Path => Mapping[String, From, From]): Validation[(Path, Seq[String]), To] =
-    this.validate[From, From](data).flatMap(sub(_))
+  def validateSub[From, To](sub: Mapping[Seq[(Path, Seq[String])], From, To])(data: From)(implicit m: Path => Mapping[String, From, To],  e: Path => Mapping[String, From, From]): VA[To] =
+    this.validate[From, From](data).flatMap(sub(_)) //TODO: expanded path in errors
 
   override def toString = "Path \\ " + path.mkString(" \\ ")
 }

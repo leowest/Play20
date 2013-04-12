@@ -13,7 +13,7 @@ object ApplicationBuild extends Build {
 
     val main = play.Project(appName, appVersion, appDependencies).settings(
       scalaVersion := "2.10.1",
-      scalacOptions ++= Seq("-feature", "-unchecked", "-deprecation")
+      scalacOptions ++= Seq("-feature", "-unchecked", "-deprecation"/*, "-Xlog-implicits"*/)
     )
 
 }
