@@ -33,7 +33,7 @@ class ValidationSpec extends Specification {
   type J = JsValue
 
   "Map / Json Validation" should {
-    /*
+
     "extract data" in {
 
       (Path \ "firstname").validate[M, Seq[String]](userMap) mustEqual(Success(Seq("Julien")))
@@ -44,7 +44,6 @@ class ValidationSpec extends Specification {
       errPath.validate[M, String](userMap)  mustEqual(error)
       errPath.validate[J, String](userJson) mustEqual(error)
     }
-
 
     "validate data" in {
 
@@ -85,7 +84,7 @@ class ValidationSpec extends Specification {
       (Path \ "lastname").validate[M, String](composed)(userMap) mustEqual(err)
       (Path \ "lastname").validate[J, String](composed)(userJson) mustEqual(err)
     }
-*/
+
     "compose validations" in {
       import play.api.libs.functional.syntax._
       import syntax._
@@ -93,9 +92,7 @@ class ValidationSpec extends Specification {
 
       val x = (Path \ "firstname").validate[M, String](nonEmptyText) _
       val y = (Path \ "lastname").validate[M, String](nonEmptyText) _
-
       val ops = toFunctionalBuilderOps[({type f[To] = M => VA[To]})#f, String](x)
-
       val userFromMap = ops ~ y
 
       success

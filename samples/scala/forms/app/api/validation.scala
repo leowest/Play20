@@ -3,7 +3,7 @@ package play.api.data.validation2
 object Validations {
   type Mapping[Err, From, To] = (From => Validation[Err, To])
   type Constraint[T] = Mapping[String, T, T]
-  type VA[To] = Validation[Seq[(Path, Seq[String])], To]
+  type VA[To] = Validation[(Path, Seq[String]), To]
 }
 
 sealed trait Validation[E, +A] {

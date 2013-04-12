@@ -7,8 +7,6 @@ sealed trait PathNode
 case class KeyPathNode(key: String) extends PathNode
 case class Path(path: List[KeyPathNode] = List()) {
 
-  import play.api.libs.functional.syntax._
-
   def \(child: String): Path = this \ KeyPathNode(child)
   def \(child: KeyPathNode): Path = Path(path :+ child)
 
@@ -17,10 +15,12 @@ case class Path(path: List[KeyPathNode] = List()) {
   def validate[From, To](data: From)(implicit m: Path => Mapping[String, From, To]): VA[To] =
     validate(Constraints.noConstraint[To])(data)
 
-  def validate[From, To](v: Constraint[To])(data: From)(implicit m: Path => Mapping[String, From, To]): VA[To] =
-    m(this)(data).flatMap(v).fail.map(errs => Seq(Seq(this -> errs)))
+  def validate[From, To](v: Constraint[To])(data: From)(implicit m: Path => Mapping[String, From, To]): VA[To] = {
+    val path = this
+    m(path)(data).flatMap(v).fail.map{ errs => Seq(path -> errs) }
+  }
 
-  def validateSub[From, To](sub: Mapping[Seq[(Path, Seq[String])], From, To])(data: From)(implicit m: Path => Mapping[String, From, To],  e: Path => Mapping[String, From, From]): VA[To] =
+  def validateSub[From, To](sub: Mapping[(Path, Seq[String]), From, To])(data: From)(implicit m: Path => Mapping[String, From, To],  e: Path => Mapping[String, From, From]): VA[To] =
     this.validate[From, From](data).flatMap(sub(_)) //TODO: expanded path in errors
 
   override def toString = "Path \\ " + path.mkString(" \\ ")
