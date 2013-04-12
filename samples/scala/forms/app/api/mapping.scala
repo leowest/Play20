@@ -3,24 +3,6 @@ package play.api.data.validation2
 import scala.language.implicitConversions
 import Validations._
 
-// XXX: This is almost a Mapping
-trait Extractor[S, A]{
-  type F = Path => Mapping[String, S, A]
-  def apply(data: S)(implicit m: F): Validation[(Path, Seq[String]), A]
-}
-
-object Extractor {
-  def apply[S, A](p: Path, v: Constraint[A]) = new Extractor[S, A] {
-    def apply(data: S)(implicit m: F) =
-      m(p)(data).flatMap(v).fail.map(errs => Seq(p -> errs))
-  }
-
-  def apply[S, A](parent: Path, sub: Extractor[S, A]) = new Extractor[S, A] {
-    def apply(data: S)(implicit m: F) =
-      sub(data){ path => m(parent.compose(path)) }
-  }
-}
-
 sealed trait PathNode
 case class KeyPathNode(key: String) extends PathNode
 case class Path(path: List[KeyPathNode] = List()) {
@@ -32,9 +14,14 @@ case class Path(path: List[KeyPathNode] = List()) {
 
   def compose(p: Path): Path = Path(this.path ++ p.path)
 
-  def validate[From, To]: Extractor[From, To] = validate(Constraints.noConstraint[To])
-  def validate[From, To](v: Constraint[To]): Extractor[From, To] = Extractor(this, v)
-  def validate[From, To](sub: Extractor[From, To]): Extractor[From, To] = Extractor(this, sub)
+  def validate[From, To](data: From)(implicit m: Path => Mapping[String, From, To]): Validation[(Path, Seq[String]), To] =
+    validate(Constraints.noConstraint[To])(data)
+
+  def validate[From, To](v: Constraint[To])(data: From)(implicit m: Path => Mapping[String, From, To]): Validation[(Path, Seq[String]), To] =
+    m(this)(data).flatMap(v).fail.map(errs => Seq(this -> errs))
+
+  def validateSub[From, To](sub: Mapping[(Path, Seq[String]), From, To])(data: From)(implicit m: Path => Mapping[String, From, To],  e: Path => Mapping[String, From, From]): Validation[(Path, Seq[String]), To] =
+    this.validate[From, From](data).flatMap(sub(_))
 
   override def toString = "Path \\ " + path.mkString(" \\ ")
 }
@@ -42,6 +29,14 @@ case class Path(path: List[KeyPathNode] = List()) {
 object Path extends Path(List.empty)
 
 object Extractors {
+
+  implicit def mapPickMap(p: Path): Mapping[String, Map[String, Seq[String]], Map[String, Seq[String]]] = { m =>
+    val prefix = p.path.map(_.key).mkString(".") + "."
+    val submap = m.filterKeys(_.startsWith(prefix)).map { case (k, v) =>
+      k.substring(prefix.length) -> v
+    }
+    Success(submap)
+  }
 
   implicit def mapPickStrings(p: Path): Mapping[String, Map[String, Seq[String]], Seq[String]] =
     _.get(p.path.map(_.key).mkString(".")).map(Success.apply[String, Seq[String]] _).getOrElse(Failure(Seq("validation.required")))
@@ -55,22 +50,25 @@ object Extractors {
   private def pathToJsPath(p: Path): JsPath =
     JsPath(p.path.map(k => JSKeyPathNode(k.key)))
 
-  implicit def jsonPickJson(p: Path): Mapping[String, JsValue, Seq[JsValue]] = { json =>
+  implicit def jsonPickJsons(p: Path): Mapping[String, JsValue, Seq[JsValue]] = { json =>
     pathToJsPath(p)(json) match {
       case Nil => Failure(Seq("validation.required"))
       case js => Success(js)
     }
   }
 
+  implicit def jsonPickJson(p: Path): Mapping[String, JsValue, JsValue] = json =>
+    jsonPickJsons(p)(json).map(_.head)
+
   implicit def jsonPickString(p: Path): Mapping[String, JsValue, String] = { json =>
-    jsonPickJson(p)(json).flatMap {
+    jsonPickJsons(p)(json).flatMap {
       case JsString(v) :: _ => Success(v)
       case _ => Failure(Seq("validation.type-mismatch"))
     }
   }
 
   implicit def jsonPickInt(p: Path): Mapping[String, JsValue, Int] = { json =>
-    jsonPickJson(p)(json).flatMap {
+    jsonPickJsons(p)(json).flatMap {
       case JsNumber(v) :: _ => Success(v.toInt)
       case _ => Failure(Seq("validation.int"))
     }

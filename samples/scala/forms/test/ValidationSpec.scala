@@ -34,6 +34,7 @@ class ValidationSpec extends Specification {
 
   "Map / Json Validation" should {
     "extract data" in {
+
       (Path \ "firstname").validate[M, Seq[String]](userMap) mustEqual(Success(Seq("Julien")))
       (Path \ "firstname").validate[J, String](userJson) mustEqual(Success("Julien"))
 
@@ -42,6 +43,7 @@ class ValidationSpec extends Specification {
       errPath.validate[M, String](userMap)  mustEqual(error)
       errPath.validate[J, String](userJson) mustEqual(error)
     }
+
 
     "validate data" in {
 
@@ -53,10 +55,10 @@ class ValidationSpec extends Specification {
     }
 
     "validate deep" in {
-      (Path \ "informations").validate(
+      (Path \ "informations").validateSub[M, String](
         (Path \ "label").validate[M, String])(userMap) mustEqual(Success("Personal"))
 
-      (Path \ "informations").validate(
+      (Path \ "informations").validateSub[J, String](
         (Path \ "label").validate[J, String])(userJson) mustEqual(Success("Personal"))
     }
 
@@ -82,17 +84,19 @@ class ValidationSpec extends Specification {
       (Path \ "lastname").validate[M, String](composed)(userMap) mustEqual(err)
       (Path \ "lastname").validate[J, String](composed)(userJson) mustEqual(err)
     }
-/*
-    "compose validations" in {
-      import syntax._
-      import play.api.libs.functional.syntax._
 
-      //val user = (Path \ "firstname").validate(nonEmptyText) ~
-      //           (Path \ "lastname").validate(nonEmptyText) ~
-      //           (Path \ "age").validate[Int]
-      success
-    }
-*/
+    //"compose validations" in {
+    //  import syntax._
+    //  import play.api.libs.functional.syntax._
+    //
+    //  val userFromMap =
+    //    (Path \ "firstname").validate[M, String](nonEmptyText) ~
+    //    (Path \ "lastname").validate[M, String](nonEmptyText) ~
+    //    (Path \ "age").validate[M, Int]
+    //
+    //  success
+    //}
+
   }
 
 }
