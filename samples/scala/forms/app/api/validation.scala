@@ -74,6 +74,7 @@ object syntax {
     }
   }
 
+/*
   implicit val applicativeExtractor = new Applicative[Extractor] {
     def pure[A](a: A) = new Extractor[A] {
       // XXX: this implicit does not make any kind of sense
@@ -86,6 +87,7 @@ object syntax {
 
     def apply[A, B](mf: Extractor[A => B], ma: Extractor[A]) = ???
   }
+*/
 
   implicit def monoidConstraint[T] = new Monoid[Constraint[T]] {
     def append(c1: Constraint[T], c2: Constraint[T]) = v => c1(v) *> (c2(v))

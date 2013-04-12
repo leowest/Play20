@@ -4,19 +4,19 @@ import scala.language.implicitConversions
 import Validations._
 
 // XXX: This is almost a Mapping
-trait Extractor[A]{
-  type F[S] = Path => Mapping[String, S, A]
-  def apply[S](data: S)(implicit m: F[S]): Validation[(Path, Seq[String]), A]
+trait Extractor[S, A]{
+  type F = Path => Mapping[String, S, A]
+  def apply(data: S)(implicit m: F): Validation[(Path, Seq[String]), A]
 }
 
 object Extractor {
-  def apply[A](p: Path, v: Constraint[A]) = new Extractor[A] {
-    def apply[S](data: S)(implicit m: F[S]) =
+  def apply[S, A](p: Path, v: Constraint[A]) = new Extractor[S, A] {
+    def apply(data: S)(implicit m: F) =
       m(p)(data).flatMap(v).fail.map(errs => Seq(p -> errs))
   }
 
-  def apply[A](parent: Path, sub: Extractor[A]) = new Extractor[A] {
-    def apply[S](data: S)(implicit m: F[S]) =
+  def apply[S, A](parent: Path, sub: Extractor[S, A]) = new Extractor[S, A] {
+    def apply(data: S)(implicit m: F) =
       sub(data){ path => m(parent.compose(path)) }
   }
 }
@@ -32,9 +32,9 @@ case class Path(path: List[KeyPathNode] = List()) {
 
   def compose(p: Path): Path = Path(this.path ++ p.path)
 
-  def validate[To]: Extractor[To] = validate(Constraints.noConstraint: Constraint[To])
-  def validate[To](v: Constraint[To]): Extractor[To] = Extractor(this, v)
-  def validate[To](sub: Extractor[To]): Extractor[To] = Extractor(this, sub)
+  def validate[From, To]: Extractor[From, To] = validate(Constraints.noConstraint[To])
+  def validate[From, To](v: Constraint[To]): Extractor[From, To] = Extractor(this, v)
+  def validate[From, To](sub: Extractor[From, To]): Extractor[From, To] = Extractor(this, sub)
 
   override def toString = "Path \\ " + path.mkString(" \\ ")
 }

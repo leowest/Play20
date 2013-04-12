@@ -29,45 +29,44 @@ class ValidationSpec extends Specification {
   import Extractors._
   import Constraints._
 
+  type M = Map[String, Seq[String]]
+  type J = JsValue
+
   "Map / Json Validation" should {
     "extract data" in {
-      (Path \ "firstname").validate[Seq[String]](userMap) mustEqual(Success(Seq("Julien")))
-      (Path \ "firstname").validate[String](userJson) mustEqual(Success("Julien"))
+      (Path \ "firstname").validate[M, Seq[String]](userMap) mustEqual(Success(Seq("Julien")))
+      (Path \ "firstname").validate[J, String](userJson) mustEqual(Success("Julien"))
 
       val errPath = Path \ "foobar"
       val error = Failure(Seq(errPath -> Seq("validation.required")))
-      errPath.validate[String](userMap)  mustEqual(error)
-      errPath.validate[String](userJson) mustEqual(error)
+      errPath.validate[M, String](userMap)  mustEqual(error)
+      errPath.validate[J, String](userJson) mustEqual(error)
     }
 
     "validate data" in {
-      val firstname = (Path \ "firstname").validate(nonEmptyText)
-      val lastname = (Path \ "lastname").validate(nonEmptyText)
 
-      firstname(userMap) mustEqual(Success("Julien"))
-      firstname(userJson) mustEqual(Success("Julien"))
+      (Path \ "firstname").validate[M, String](nonEmptyText)(userMap) mustEqual(Success("Julien"))
+      (Path \ "firstname").validate[J, String](userJson) mustEqual(Success("Julien"))
 
-      lastname(userMap)  mustEqual(Failure(Seq((Path \ "lastname") -> Seq("validation.nonemptytext"))))
-      lastname(userJson) mustEqual(Failure(Seq((Path \ "lastname") -> Seq("validation.nonemptytext"))))
+      (Path \ "lastname").validate[M, String](nonEmptyText)(userMap)  mustEqual(Failure(Seq((Path \ "lastname") -> Seq("validation.nonemptytext"))))
+      (Path \ "lastname").validate[J, String](nonEmptyText)(userJson) mustEqual(Failure(Seq((Path \ "lastname") -> Seq("validation.nonemptytext"))))
     }
 
     "validate deep" in {
-      val v =
-        (Path \ "informations").validate(
-          (Path \ "label").validate[String])
+      (Path \ "informations").validate(
+        (Path \ "label").validate[M, String])(userMap) mustEqual(Success("Personal"))
 
-      v(userMap) mustEqual(Success("Personal"))
-      v(userJson) mustEqual(Success("Personal"))
+      (Path \ "informations").validate(
+        (Path \ "label").validate[J, String])(userJson) mustEqual(Success("Personal"))
     }
 
     "coerce type" in {
-      val age = (Path \ "age").validate[Int]
 
-      age(userMap) mustEqual(Success(27))
-      age(userJson) mustEqual(Success(27))
+      (Path \ "age").validate[M, Int](userMap) mustEqual(Success(27))
+      (Path \ "age").validate[J, Int](userJson) mustEqual(Success(27))
 
-      (Path \ "firstname").validate[Int](userMap) mustEqual(Failure(Seq((Path \ "firstname") -> Seq("validation.int"))))
-      (Path \ "firstname").validate[Int](userJson) mustEqual(Failure(Seq((Path \ "firstname") -> Seq("validation.int"))))
+      (Path \ "firstname").validate[M, Int](userMap) mustEqual(Failure(Seq((Path \ "firstname") -> Seq("validation.int"))))
+      (Path \ "firstname").validate[J, Int](userJson) mustEqual(Failure(Seq((Path \ "firstname") -> Seq("validation.int"))))
     }
 
     "compose constraints" in {
@@ -75,17 +74,15 @@ class ValidationSpec extends Specification {
       // TODO: create MonoidOps
       val composed = monoidConstraint.append(nonEmptyText, minLength(3))
 
-      val firstname = (Path \ "firstname").validate(composed)
-      firstname(userMap) mustEqual(Success("Julien"))
-      firstname(userJson) mustEqual(Success("Julien"))
+      (Path \ "firstname").validate[M, String](composed)(userMap) mustEqual(Success("Julien"))
+      (Path \ "firstname").validate[J, String](composed)(userJson) mustEqual(Success("Julien"))
 
       val err = Failure(Seq((Path \ "lastname") -> Seq("validation.nonemptytext", "validation.minLength")))
 
-      val lastname = (Path \ "lastname").validate(composed)
-      lastname(userMap) mustEqual(err)
-      lastname(userJson) mustEqual(err)
+      (Path \ "lastname").validate[M, String](composed)(userMap) mustEqual(err)
+      (Path \ "lastname").validate[J, String](composed)(userJson) mustEqual(err)
     }
-
+/*
     "compose validations" in {
       import syntax._
       import play.api.libs.functional.syntax._
@@ -95,6 +92,7 @@ class ValidationSpec extends Specification {
       //           (Path \ "age").validate[Int]
       success
     }
+*/
   }
 
 }
