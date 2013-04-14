@@ -19,7 +19,6 @@ object Validations {
     override def map[A, B](m: Rule[I, A], f: A => B): Rule[I, B] =
       Rule(m.p, { p => d => m.m(p)(d).map(f) })
 
-    // case class Rule[I, O](p: Path, m: Path => Mapping[String, I, O], v: Constraint[O] = Constraints.noConstraint[O]) {
     override def apply[A, B](mf: Rule[I, A => B], ma: Rule[I, A]): Rule[I, B] =
       Rule(ma.p, { p => d =>
         val a = ma.validate(d)
