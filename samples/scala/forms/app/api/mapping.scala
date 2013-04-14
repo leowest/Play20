@@ -3,6 +3,11 @@ package play.api.data.validation2
 import scala.language.implicitConversions
 import Validations._
 
+case class Rule[I, O](p: Path, m: Path => Mapping[(Path, Seq[String]), I, O], v: Constraint[O] = Constraints.noConstraint[O]) {
+  def validate(data: I): VA[O] =
+    m(p)(data).flatMap(v(_).fail.map{ errs => Seq(p -> errs) })
+}
+
 sealed trait PathNode
 case class KeyPathNode(key: String) extends PathNode
 case class Path(path: List[KeyPathNode] = List()) {
@@ -12,16 +17,15 @@ case class Path(path: List[KeyPathNode] = List()) {
 
   def compose(p: Path): Path = Path(this.path ++ p.path)
 
-  def validate[From, To](data: From)(implicit m: Path => Mapping[String, From, To]): VA[To] =
-    validate(Constraints.noConstraint[To])(data)
+  def validate[I, O](implicit m: Path => Mapping[String, I, O]): Rule[I, O] =
+    validate(Constraints.noConstraint[O])
 
-  def validate[From, To](v: Constraint[To])(data: From)(implicit m: Path => Mapping[String, From, To]): VA[To] = {
-    val path = this
-    m(path)(data).flatMap(v).fail.map{ errs => Seq(path -> errs) }
-  }
+  def validate[I, O](v: Constraint[O])(implicit m: Path => Mapping[String, I, O]): Rule[I, O] =
+    Rule(this, (p: Path) => (d: I) => m(p)(d).fail.map{ errs => Seq(p -> errs) }, v)
 
-  def validateSub[From, To](sub: Mapping[(Path, Seq[String]), From, To])(data: From)(implicit m: Path => Mapping[String, From, To],  e: Path => Mapping[String, From, From]): VA[To] =
-    this.validate[From, From](data).flatMap(sub(_)) //TODO: expanded path in errors
+  def validate[I, O](sub: Rule[I, O])(implicit m: Path => Mapping[String, I, O]): Rule[I, O] =
+    Rule(this compose sub.p, (p: Path) => (d: I) => m(p)(d).fail.map{ errs => Seq(p -> errs) }, sub.v)
+
 
   override def toString = "Path \\ " + path.mkString(" \\ ")
 }

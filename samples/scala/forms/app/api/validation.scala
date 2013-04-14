@@ -4,6 +4,38 @@ object Validations {
   type Mapping[Err, From, To] = (From => Validation[Err, To])
   type Constraint[T] = Mapping[String, T, T]
   type VA[To] = Validation[(Path, Seq[String]), To]
+
+  import play.api.libs.functional._
+
+  implicit def monoidConstraint[T] = new Monoid[Constraint[T]] {
+    def append(c1: Constraint[T], c2: Constraint[T]) = v => c1(v) *> (c2(v))
+    def identity = Constraints.noConstraint[T]
+  }
+
+  implicit def applicativeRule[I] = new Applicative[({type f[O] = Rule[I, O]})#f] {
+    override def pure[A](a: A): Rule[I, A] =
+      Rule(Path, (_: Path) => (_: I) => Success(a))
+
+    override def map[A, B](m: Rule[I, A], f: A => B): Rule[I, B] =
+      Rule(m.p, { p => d => m.m(p)(d).map(f) })
+
+    // case class Rule[I, O](p: Path, m: Path => Mapping[String, I, O], v: Constraint[O] = Constraints.noConstraint[O]) {
+    override def apply[A, B](mf: Rule[I, A => B], ma: Rule[I, A]): Rule[I, B] =
+      Rule(ma.p, { p => d =>
+        val a = ma.validate(d)
+        val f = mf.validate(d)
+        a.flatMap(x => f.map(_(x)))
+      })
+  }
+
+  implicit def functorRule[I] = new Functor[({type f[O] = Rule[I, O]})#f] {
+    def fmap[A, B](m: Rule[I, A], f: A => B): Rule[I, B] = applicativeRule[I].map(m, f)
+  }
+
+  // Helps the compiler a bit
+  import play.api.libs.functional.syntax._
+  implicit def cba[I] = functionalCanBuildApplicative[({type f[O] = Rule[I, O]})#f]
+  implicit def fbo[I] = toFunctionalBuilderOps[({type f[O] = Rule[I, O]})#f, String] _
 }
 
 sealed trait Validation[E, +A] {
@@ -50,47 +82,5 @@ object Failure {
 
   def merge[E, A](e1: Failure[E, A], e2: Failure[E, A]): Failure[E, A] = {
     Failure(e1.errors ++ e2.errors)
-  }
-}
-
-
-object syntax {
-
-  import Validations._
-  import play.api.libs.functional._
-
-  //type V[A] = Validation[String, A]
-  //implicit val applicativeV: Applicative[V] = new Applicative[V] {
-  //
-  //  def pure[A](a:A): V[A] = Success(a)
-  //
-  //  def map[A, B](m: V[A], f: A => B): V[B] = m.map(f)
-  //
-  //  def apply[A, B](mf:V[A => B], ma: V[A]): V[B] = (mf, ma) match {
-  //    case (Success(f), Success(a)) => Success(f(a))
-  //    case (Failure(e1), Failure(e2)) => Failure(e1 ++ e2)
-  //    case (Failure(e), _) => Failure(e)
-  //    case (_, Failure(e)) => Failure(e)
-  //  }
-  //}
-
-  implicit def applicativeFA[From] = new Applicative[({type f[To] = From => VA[To]})#f] {
-    override def pure[A](a: A): From => VA[A] =
-      _ => Success(a)
-    override def map[A, B](m: (From => VA[A]), f: A => B): From => VA[B] =
-      d => m(d).map(f)
-    override def apply[A, B](mf: (From => VA[A => B]), ma: (From => VA[A])): From => VA[B] =
-      d => ma(d).flatMap{ a => mf(d).map(_(a)) }
-  }
-
-  // testing stuff
-  //val ap: Applicative[({type f[To] = Map[String, Seq[String]] => VA[To]})#f] = applicativeFA[Map[String, Seq[String]]]
-  implicit def cb[To] = play.api.libs.functional.syntax.functionalCanBuildApplicative[({type f[To] = Map[String, Seq[String]] => VA[To]})#f]
-  //def cb2[To] = play.api.libs.functional.syntax.functionalCanBuildApplicative[({type f[To] = Map[String, Seq[String]] => VA[To]})#f](ap)
-  //def cb3[To] = play.api.libs.functional.syntax.functionalCanBuildApplicative(ap) // Does not work
-
-  implicit def monoidConstraint[T] = new Monoid[Constraint[T]] {
-    def append(c1: Constraint[T], c2: Constraint[T]) = v => c1(v) *> (c2(v))
-    def identity = Constraints.noConstraint[T]
   }
 }
