@@ -3,7 +3,7 @@ package play.api.data.validation2
 object Validations {
   type Mapping[Err, From, To] = (From => Validation[Err, To])
   type Constraint[T] = Mapping[String, T, T]
-  type VA[To] = Validation[(Path, Seq[String]), To]
+  type VA[I, To] = Validation[(Path[I], Seq[String]), To]
 
   import play.api.libs.functional._
 
@@ -14,7 +14,7 @@ object Validations {
 
   implicit def applicativeRule[I] = new Applicative[({type f[O] = Rule[I, O]})#f] {
     override def pure[A](a: A): Rule[I, A] =
-      Rule(Path, (_: Path) => (_: I) => Success(a))
+      Rule(Path[I](), (_: Path[I]) => (_: I) => Success(a))
 
     override def map[A, B](m: Rule[I, A], f: A => B): Rule[I, B] =
       Rule(m.p, { p => d => m.m(p)(d).map(f) })

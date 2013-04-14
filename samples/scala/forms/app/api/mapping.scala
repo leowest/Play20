@@ -3,38 +3,39 @@ package play.api.data.validation2
 import scala.language.implicitConversions
 import Validations._
 
-case class Rule[I, O](p: Path, m: Path => Mapping[(Path, Seq[String]), I, O], v: Constraint[O] = Constraints.noConstraint[O]) {
-  def validate(data: I): VA[O] =
+case class Rule[I, O](p: Path[I], m: Path[I] => Mapping[(Path[I], Seq[String]), I, O], v: Constraint[O] = Constraints.noConstraint[O]) {
+  def validate(data: I): VA[I, O] =
     m(p)(data).flatMap(v(_).fail.map{ errs => Seq(p -> errs) })
 }
 
 sealed trait PathNode
 case class KeyPathNode(key: String) extends PathNode
-case class Path(path: List[KeyPathNode] = List()) {
+case class Path[I](path: List[KeyPathNode] = Nil) {
 
-  def \(child: String): Path = this \ KeyPathNode(child)
-  def \(child: KeyPathNode): Path = Path(path :+ child)
+  def \(child: String): Path[I] = this \ KeyPathNode(child)
+  def \(child: KeyPathNode): Path[I] = Path(path :+ child)
 
-  def compose(p: Path): Path = Path(this.path ++ p.path)
+  def compose(p: Path[I]): Path[I] = Path(this.path ++ p.path)
 
-  def validate[I, O](implicit m: Path => Mapping[String, I, O]): Rule[I, O] =
+  def validate[O](implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
     validate(Constraints.noConstraint[O])
 
-  def validate[I, O](v: Constraint[O])(implicit m: Path => Mapping[String, I, O]): Rule[I, O] =
-    Rule(this, (p: Path) => (d: I) => m(p)(d).fail.map{ errs => Seq(p -> errs) }, v)
+  def validate[O](v: Constraint[O])(implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
+    Rule(this, (p: Path[I]) => (d: I) => m(p)(d).fail.map{ errs => Seq(p -> errs) }, v)
 
-  def validate[I, O](sub: Rule[I, O])(implicit m: Path => Mapping[String, I, O]): Rule[I, O] =
-    Rule(this compose sub.p, (p: Path) => (d: I) => m(p)(d).fail.map{ errs => Seq(p -> errs) }, sub.v)
+  def validate[O](sub: Rule[I, O])(implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
+    Rule(this compose sub.p, (p: Path[I]) => (d: I) => m(p)(d).fail.map{ errs => Seq(p -> errs) }, sub.v)
 
 
   override def toString = "Path \\ " + path.mkString(" \\ ")
 }
 
-object Path extends Path(List.empty)
+object JsPath extends Path[play.api.libs.json.JsValue](Nil)
+object FormPath extends Path[Map[String, Seq[String]]](Nil)
 
 object Extractors {
 
-  implicit def mapPickMap(p: Path): Mapping[String, Map[String, Seq[String]], Map[String, Seq[String]]] = { m =>
+  implicit def mapPickMap(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], Map[String, Seq[String]]] = { m =>
     val prefix = p.path.map(_.key).mkString(".") + "."
     val submap = m.filterKeys(_.startsWith(prefix)).map { case (k, v) =>
       k.substring(prefix.length) -> v
@@ -42,36 +43,36 @@ object Extractors {
     Success(submap)
   }
 
-  implicit def mapPickStrings(p: Path): Mapping[String, Map[String, Seq[String]], Seq[String]] =
+  implicit def mapPickStrings(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], Seq[String]] =
     _.get(p.path.map(_.key).mkString(".")).map(Success.apply[String, Seq[String]] _).getOrElse(Failure(Seq("validation.required")))
 
-  implicit def mapPickString(p: Path): Mapping[String, Map[String, Seq[String]], String] =
+  implicit def mapPickString(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], String] =
     data => mapPickStrings(p)(data).map(_.head)
-  implicit def mapPickInt(p: Path): Mapping[String, Map[String, Seq[String]], Int] =
+  implicit def mapPickInt(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], Int] =
     data => mapPickString(p)(data).flatMap(Constraints.validateWith("validation.int"){ (_: String).matches("-?[0-9]+") }).map(_.toInt)
 
   import play.api.libs.json.{ KeyPathNode => JSKeyPathNode, _ }
-  private def pathToJsPath(p: Path): JsPath =
-    JsPath(p.path.map(k => JSKeyPathNode(k.key)))
+  private def pathToJsPath(p: Path[JsValue]) =
+    play.api.libs.json.JsPath(p.path.map(k => JSKeyPathNode(k.key)))
 
-  implicit def jsonPickJsons(p: Path): Mapping[String, JsValue, Seq[JsValue]] = { json =>
+  implicit def jsonPickJsons(p: Path[JsValue]): Mapping[String, JsValue, Seq[JsValue]] = { json =>
     pathToJsPath(p)(json) match {
       case Nil => Failure(Seq("validation.required"))
       case js => Success(js)
     }
   }
 
-  implicit def jsonPickJson(p: Path): Mapping[String, JsValue, JsValue] = json =>
+  implicit def jsonPickJson(p: Path[JsValue]): Mapping[String, JsValue, JsValue] = json =>
     jsonPickJsons(p)(json).map(_.head)
 
-  implicit def jsonPickString(p: Path): Mapping[String, JsValue, String] = { json =>
+  implicit def jsonPickString(p: Path[JsValue]): Mapping[String, JsValue, String] = { json =>
     jsonPickJsons(p)(json).flatMap {
       case JsString(v) :: _ => Success(v)
       case _ => Failure(Seq("validation.type-mismatch"))
     }
   }
 
-  implicit def jsonPickInt(p: Path): Mapping[String, JsValue, Int] = { json =>
+  implicit def jsonPickInt(p: Path[JsValue]): Mapping[String, JsValue, Int] = { json =>
     jsonPickJsons(p)(json).flatMap {
       case JsNumber(v) :: _ => Success(v.toInt)
       case _ => Failure(Seq("validation.int"))
