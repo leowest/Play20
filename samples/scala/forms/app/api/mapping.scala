@@ -17,15 +17,14 @@ case class Path[I](path: List[KeyPathNode] = Nil) {
 
   def compose(p: Path[I]): Path[I] = Path(this.path ++ p.path)
 
-  def validate[O](implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
-    validate(Constraints.noConstraint[O])
-
   def validate[O](v: Constraint[O])(implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
     Rule(this, (p: Path[I]) => (d: I) => m(p)(d).fail.map{ errs => Seq(p -> errs) }, v)
 
-  def validate[O](sub: Rule[I, O])(implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
-    Rule(this compose sub.p, (p: Path[I]) => (d: I) => m(p)(d).fail.map{ errs => Seq(p -> errs) }, sub.v)
+  def validate[O](sub: Rule[I, O]): Rule[I, O] =
+    Rule(this compose sub.p, sub.m, sub.v)
 
+  def validate[O](implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
+    validate(Constraints.noConstraint[O])
 
   override def toString = "Path \\ " + path.mkString(" \\ ")
 }
@@ -33,7 +32,17 @@ case class Path[I](path: List[KeyPathNode] = Nil) {
 object JsPath extends Path[play.api.libs.json.JsValue](Nil)
 object FormPath extends Path[Map[String, Seq[String]]](Nil)
 
-object Extractors {
+object Mappings {
+
+  import play.api.mvc.Request
+
+  implicit def pickInRequest[I, O](p: Path[Request[I]])(implicit pick: Path[I] => Mapping[String, I, O]): Mapping[String, Request[I], O] = { request =>
+    pick(Path[I](p.path))(request.body)
+  }
+
+  implicit def pickOptional[I, O](p: Path[I])(implicit pick: Path[I] => Mapping[String, I, O]): Mapping[String, I, Option[O]] = { d =>
+    pick(p)(d).map(Some.apply) | Success(None)
+  }
 
   implicit def mapPickMap(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], Map[String, Seq[String]]] = { m =>
     val prefix = p.path.map(_.key).mkString(".") + "."
@@ -86,6 +95,9 @@ object Constraints {
 
   def validateWith[From](msg: String)(pred: From => Boolean): Constraint[From] =
     v => if(!pred(v)) Failure(Seq(msg)) else Success(v)
+
+  def optional[O](c: Constraint[O]): Constraint[Option[O]] =
+    _.map(v => c(v).map(Some.apply)).getOrElse(Success(None))
 
   def nonEmptyText = validateWith("validation.nonemptytext"){ !(_: String).isEmpty }
   def min(m: Int) = validateWith("validation.min"){(_: Int) > m}

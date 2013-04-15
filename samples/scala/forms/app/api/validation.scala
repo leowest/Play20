@@ -56,6 +56,12 @@ sealed trait Validation[E, +A] {
     case (Failure(e1), Failure(e2)) => Failure(e1 ++ e2)
   }
 
+  def |[B >: A](o: => Validation[E, B]): Validation[E, B] =  (this, o) match {
+    case (Success(v), _) => Success(v)
+    case (Failure(e), Success(v)) => Success(v)
+    case (Failure(e), _) => Failure(e)
+  }
+
   def fail = FailProjection(this)
   def success = SuccessProjection(this)
 }

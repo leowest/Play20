@@ -43,7 +43,7 @@ class ValidationSpec extends Specification {
       "phones" -> Seq("01.23.45.67.89", "98.76.54.32.10")))
 
   import play.api.data.validation2._
-  import Extractors._
+  import Mappings._
   import Constraints._
 
   type M = Map[String, Seq[String]]
@@ -73,6 +73,11 @@ class ValidationSpec extends Specification {
       p.validate(nonEmptyText).validate(invalid)  mustEqual(Failure(Seq(p -> Seq("validation.nonemptytext"))))
     }
 
+    "validate optional" in {
+      (__ \ "firstname").validate[Option[String]].validate(valid) mustEqual(Success(Some("Julien")))
+      (__ \ "foobar").validate[Option[String]].validate(valid) mustEqual(Success(None))
+    }
+
     "validate deep" in {
       val p = (__ \ "informations" \ "label")
 
@@ -88,7 +93,6 @@ class ValidationSpec extends Specification {
       (__ \ "age").validate[Int].validate(valid) mustEqual(Success(27))
       (__ \ "firstname").validate[Int].validate(valid) mustEqual(Failure(Seq((__ \ "firstname") -> Seq("validation.int"))))
     }
-
 
     "compose constraints" in {
       // TODO: create MonoidOps
@@ -140,6 +144,11 @@ class ValidationSpec extends Specification {
       p.validate(nonEmptyText).validate(invalid)  mustEqual(Failure(Seq(p -> Seq("validation.nonemptytext"))))
     }
 
+    "validate optional" in {
+      (__ \ "firstname").validate[Option[String]].validate(valid) mustEqual(Success(Some("Julien")))
+      (__ \ "foobar").validate[Option[String]].validate(valid) mustEqual(Success(None))
+    }
+
     "validate deep" in {
       val p = (__ \ "informations" \ "label")
 
@@ -150,12 +159,10 @@ class ValidationSpec extends Specification {
         (__ \ "label").validate(nonEmptyText)).validate(invalid) mustEqual(Failure(Seq(p -> Seq("validation.nonemptytext"))))
     }
 
-
     "coerce type" in {
       (__ \ "age").validate[Int].validate(valid) mustEqual(Success(27))
       (__ \ "firstname").validate[Int].validate(valid) mustEqual(Failure(Seq((__ \ "firstname") -> Seq("validation.int"))))
     }
-
 
     "compose constraints" in {
       // TODO: create MonoidOps
@@ -167,7 +174,6 @@ class ValidationSpec extends Specification {
       val err = Failure(Seq(p -> Seq("validation.nonemptytext", "validation.minLength")))
       p.validate(composed).validate(invalid) mustEqual(err)
     }
-
 
     "compose validations" in {
       import play.api.libs.functional.syntax._
