@@ -33,16 +33,8 @@ object JsPath extends Path[play.api.libs.json.JsValue](Nil)
 object FormPath extends Path[Map[String, Seq[String]]](Nil)
 
 object Mappings {
-
+  //TODO: refactor
   import play.api.mvc.Request
-
-  implicit def pickInRequest[I, O](p: Path[Request[I]])(implicit pick: Path[I] => Mapping[String, I, O]): Mapping[String, Request[I], O] = { request =>
-    pick(Path[I](p.path))(request.body)
-  }
-
-  implicit def pickOptional[I, O](p: Path[I])(implicit pick: Path[I] => Mapping[String, I, O]): Mapping[String, I, Option[O]] = { d =>
-    pick(p)(d).map(Some.apply) | Success(None)
-  }
 
   implicit def mapPickMap(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], Map[String, Seq[String]]] = { m =>
     val prefix = p.path.map(_.key).mkString(".") + "."
@@ -74,18 +66,33 @@ object Mappings {
   implicit def jsonPickJson(p: Path[JsValue]): Mapping[String, JsValue, JsValue] = json =>
     jsonPickJsons(p)(json).map(_.head)
 
-  implicit def jsonPickString(p: Path[JsValue]): Mapping[String, JsValue, String] = { json =>
-    jsonPickJsons(p)(json).flatMap {
-      case JsString(v) :: _ => Success(v)
+  implicit def jsonPickOne[O](p: Path[JsValue])(implicit m: Mapping[String, JsValue, O]): Mapping[String, JsValue, O] = { json =>
+    jsonPickJson(p)(json).flatMap(m)
+  }
+
+  implicit def jsonAsString: Mapping[String, JsValue, String] = {
+    case JsString(v) => Success(v)
+    case _ => Failure(Seq("validation.type-mismatch"))
+  }
+
+  implicit def jsonAsInt: Mapping[String, JsValue, Int] = {
+    case JsNumber(v) => Success(v.toInt)
+    case _ => Failure(Seq("validation.type-mismatch"))
+  }
+
+  implicit def jsonPickSeqs[O](p: Path[JsValue])(implicit m: Mapping[String, JsValue, O]): Mapping[String, JsValue, Seq[O]] = { json =>
+    jsonPickJson(p)(json).flatMap {
+      case JsArray(vs) => Validation.sequence(vs.map(m))
       case _ => Failure(Seq("validation.type-mismatch"))
     }
   }
 
-  implicit def jsonPickInt(p: Path[JsValue]): Mapping[String, JsValue, Int] = { json =>
-    jsonPickJsons(p)(json).flatMap {
-      case JsNumber(v) :: _ => Success(v.toInt)
-      case _ => Failure(Seq("validation.int"))
-    }
+  implicit def pickInRequest[I, O](p: Path[Request[I]])(implicit pick: Path[I] => Mapping[String, I, O]): Mapping[String, Request[I], O] = { request =>
+    pick(Path[I](p.path))(request.body)
+  }
+
+  implicit def pickOptional[I, O](p: Path[I])(implicit pick: Path[I] => Mapping[String, I, O]): Mapping[String, I, Option[O]] = { d =>
+    pick(p)(d).map(Some.apply) | Success(None)
   }
 
 }
@@ -98,6 +105,9 @@ object Constraints {
 
   def optional[O](c: Constraint[O]): Constraint[Option[O]] =
     _.map(v => c(v).map(Some.apply)).getOrElse(Success(None))
+
+  def list[O](c: Constraint[O]): Constraint[Seq[O]] =
+    vs => Validation.sequence(vs.map(c))
 
   def nonEmptyText = validateWith("validation.nonemptytext"){ !(_: String).isEmpty }
   def min(m: Int) = validateWith("validation.min"){(_: Int) > m}

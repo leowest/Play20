@@ -66,6 +66,20 @@ sealed trait Validation[E, +A] {
   def success = SuccessProjection(this)
 }
 
+object Validation {
+  // this method should be defined for any instance of Monad
+  def sequence[E, A](vs: Seq[Validation[E, A]]): Validation[E, Seq[A]] = {
+    val reversed = vs.foldLeft[Validation[E, Seq[A]]](Success(Nil)){ (acc, va) =>
+      va.flatMap({ a: A =>
+        acc.flatMap({ as: Seq[A] =>
+          Success(a +: as)
+        })
+      })
+    }
+    reversed.flatMap({ as: Seq[A] => Success(as.reverse) })
+  }
+}
+
 case class FailProjection[E, +A](v: Validation[E, A]) {
   def map[F](f: Seq[E] => Seq[F]): Validation[F, A] = v match {
     case Success(v) => Success(v)

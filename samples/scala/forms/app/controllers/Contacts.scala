@@ -47,13 +47,11 @@ object Contacts extends Controller {
 
     val __ = Path[Request[JsValue]]()
 
-    val p = pickOptional[Request[JsValue], String] _
-
-    val infoValidation: Rule[Request[JsValue],(String, Option[String], String, String)] =
+    val infoValidation =
       ((__ \ "label").validate(nonEmptyText) ~
       (__ \ "email").validate[Option[String]]/*(email)*/ ~
       (__ \ "label").validate(nonEmptyText) ~
-      (__ \ "phones").validate(nonEmptyText)) {(_, _, _, _)}
+      (__ \ "phones").validate(list(nonEmptyText))) {(_, _, _, _)}
 
     (__ \ "firstname").validate(nonEmptyText) ~
     (__ \ "lastname").validate(nonEmptyText) ~
