@@ -102,9 +102,8 @@ object Contacts extends Controller {
       form => NotImplemented,
       json =>
         contactValidation.validate(json).fold(
-          err => BadRequest(err.toString),
-          _ => Ok)
-    )
+          err => BadRequest(Json.toJson(err)),
+          _ => Ok))
     //contactForm.bindFromRequest.fold(
     //  errors => BadRequest(html.contact.form(errors)),
     //  contact => Ok(html.contact.summary(contact))
