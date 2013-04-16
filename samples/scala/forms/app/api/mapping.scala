@@ -11,7 +11,9 @@ case class Rule[I, O](p: Path[I], m: Path[I] => Mapping[(Path[I], Seq[String]), 
 }
 
 sealed trait PathNode
-case class KeyPathNode(key: String) extends PathNode
+case class KeyPathNode(key: String) extends PathNode {
+  override def toString = key
+}
 case class Path[I](path: List[KeyPathNode] = Nil) {
 
   def \(child: String): Path[I] = this \ KeyPathNode(child)
@@ -37,7 +39,7 @@ case class Path[I](path: List[KeyPathNode] = Nil) {
   def validate[O](implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
     validate(Constraints.noConstraint[O])
 
-  override def toString = "Path \\ " + path.mkString(" \\ ")
+  override def toString = "/" + path.mkString("/")
 }
 
 object JsPath extends Path[play.api.libs.json.JsValue](Nil)
