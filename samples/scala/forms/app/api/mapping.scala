@@ -24,11 +24,11 @@ case class Path[I](path: List[KeyPathNode] = Nil) {
 
   def validate[O](sub: Rule[I, O])(implicit l: Path[I] => Mapping[String, I, I]): Rule[I, O] = {
     val parent = this
-    Rule(this, { p => d =>
+    Rule(this compose sub.p, { p => d =>
       val v = l(parent)(d)
       v.fold(
         es => Failure(Seq(parent -> es)),
-        s  => sub.m(p)(s))
+        s  => sub.m(sub.p)(s))
     }, sub.v)
   }
 
@@ -54,7 +54,6 @@ object Mappings {
   import play.api.libs.json.{ KeyPathNode => JSKeyPathNode, _ }
   private def pathToJsPath(p: Path[JsValue]) =
     play.api.libs.json.JsPath(p.path.map(k => JSKeyPathNode(k.key)))
-
 
   implicit def IasI[I]: Mapping[String, I, I] = Success(_)
 
