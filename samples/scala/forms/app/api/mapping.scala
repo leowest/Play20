@@ -1,5 +1,7 @@
 package play.api.data.validation2
 
+import scala.language.higherKinds
+
 import scala.language.implicitConversions
 import Validations._
 
@@ -40,42 +42,21 @@ object JsPath extends Path[play.api.libs.json.JsValue](Nil)
 object FormPath extends Path[Map[String, Seq[String]]](Nil)
 
 object Mappings {
-  //TODO: refactor
+
   import play.api.mvc.Request
 
-  implicit def mapPickMap(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], Map[String, Seq[String]]] = { m =>
-    val prefix = p.path.map(_.key).mkString(".") + "."
-    val submap = m.filterKeys(_.startsWith(prefix)).map { case (k, v) =>
-      k.substring(prefix.length) -> v
-    }
-    Success(submap)
-  }
+  implicit def seqAsO[O](implicit m: Mapping[String, String, O]): Mapping[String, Seq[String], O] =
+    _.headOption.map(Success[String, String](_)).getOrElse(Failure[String, String](Seq("validation.required"))).flatMap(m)
 
-  implicit def mapPickStrings(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], Seq[String]] =
-    _.get(p.path.map(_.key).mkString(".")).map(Success.apply[String, Seq[String]] _).getOrElse(Failure(Seq("validation.required")))
-
-  implicit def mapPickString(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], String] =
-    data => mapPickStrings(p)(data).map(_.head)
-
-  implicit def mapPickInt(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], Int] =
-    data => mapPickString(p)(data).flatMap(Constraints.validateWith("validation.type-mismatch"){ (_: String).matches("-?[0-9]+") }).map(_.toInt)
+  implicit def stringAsInt: Mapping[String, String, Int] =
+    Constraints.validateWith("validation.type-mismatch"){ (_: String).matches("-?[0-9]+") }(_).map(_.toInt)
 
   import play.api.libs.json.{ KeyPathNode => JSKeyPathNode, _ }
   private def pathToJsPath(p: Path[JsValue]) =
     play.api.libs.json.JsPath(p.path.map(k => JSKeyPathNode(k.key)))
 
-  implicit def jsonPickJsons(p: Path[JsValue]): Mapping[String, JsValue, Seq[JsValue]] = { json =>
-    pathToJsPath(p)(json) match {
-      case Nil => Failure(Seq("validation.required"))
-      case js => Success(js)
-    }
-  }
 
-  implicit def jsonPickJson(p: Path[JsValue]): Mapping[String, JsValue, JsValue] =
-    json => jsonPickJsons(p)(json).map(_.head)
-
-  implicit def jsonPickOne[O](p: Path[JsValue])(implicit m: Mapping[String, JsValue, O]): Mapping[String, JsValue, O] =
-    json => jsonPickJson(p)(json).flatMap(m)
+  implicit def IasI[I]: Mapping[String, I, I] = Success(_)
 
   implicit def jsonAsString: Mapping[String, JsValue, String] = {
     case JsString(v) => Success(v)
@@ -87,26 +68,46 @@ object Mappings {
     case _ => Failure(Seq("validation.type-mismatch"))
   }
 
-  implicit def jsonAsSeq: Mapping[String, JsValue, Seq[JsValue]] = {
-    case JsArray(vs) => Success(vs)
+  implicit def jsonAsSeq[O](implicit m: Mapping[String, JsValue, O]): Mapping[String, JsValue, Seq[O]] = {
+    case JsArray(vs) => Validation.sequence(vs.map(m))
     case _ => Failure(Seq("validation.type-mismatch"))
   }
 
-  implicit def jsonPickSeq[O](p: Path[JsValue])(implicit m: Mapping[String, JsValue, O]): Mapping[String, JsValue, Seq[O]] = { json =>
-    jsonPickJson(p)(json).flatMap {
-      case JsArray(vs) => Validation.sequence(vs.map(m))
-      case _ => Failure(Seq("validation.type-mismatch"))
-    }
-  }
-
-  implicit def jsonPickList[O](p: Path[JsValue])(implicit m: Mapping[String, JsValue, O]): Mapping[String, JsValue, List[O]] =
-    json => jsonPickSeq(p)(m)(json).map(_.toList)
+/*
+  // XXX: diverging implicit issue (validation is covariant on A)
+  implicit def jsonAsList[O](implicit m: Mapping[String, JsValue, O]): Mapping[String, JsValue, List[O]] =
+    jsonAsSeq[O](m)(_).map(_.toList)
+*/
 
   implicit def pickInRequest[I, O](p: Path[Request[I]])(implicit pick: Path[I] => Mapping[String, I, O]): Mapping[String, Request[I], O] =
     request => pick(Path[I](p.path))(request.body)
 
   implicit def pickOptional[I, O](p: Path[I])(implicit pick: Path[I] => Mapping[String, I, O]): Mapping[String, I, Option[O]] =
     d => pick(p)(d).map(Some.apply) | Success(None)
+
+  implicit def pickInJson[O](p: Path[JsValue])(implicit m: Mapping[String, JsValue, O]): Mapping[String, JsValue, O] = { json =>
+    val v: Validation[String, JsValue] = pathToJsPath(p)(json) match {
+      case Nil => Failure(Seq("validation.required"))
+      case js :: _ => Success(js)
+    }
+    v.flatMap(m)
+  }
+
+  implicit def pickInMap[O](p: Path[Map[String, Seq[String]]])(implicit m: Mapping[String, Seq[String], O]): Mapping[String, Map[String, Seq[String]], O] = {
+    data =>
+      val key = p.path.map(_.key).mkString(".")
+      val validation: Validation[String, Seq[String]] =
+        data.get(key).map(Success[String, Seq[String]](_)).getOrElse{ Failure[String, Seq[String]](Seq("validation.required")) }
+      validation.flatMap(m)
+  }
+
+  implicit def mapPickMap(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], Map[String, Seq[String]]] = { m =>
+    val prefix = p.path.map(_.key).mkString(".") + "."
+    val submap = m.filterKeys(_.startsWith(prefix)).map { case (k, v) =>
+      k.substring(prefix.length) -> v
+    }
+    Success(submap)
+  }
 
 }
 

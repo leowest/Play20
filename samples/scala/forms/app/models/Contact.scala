@@ -10,5 +10,5 @@ case class Contact(
 case class ContactInformation(
   label: String,
   email: Option[String],
-  phones: List[String]
+  phones: Seq[String]
 )

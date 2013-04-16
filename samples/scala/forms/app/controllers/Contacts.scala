@@ -28,7 +28,7 @@ object Contacts extends Controller {
         mapping(
           "label" -> nonEmptyText,
           "email" -> optional(email),
-          "phones" -> list(
+          "phones" -> seq(
             text verifying pattern("""[0-9.+]+""".r, error="A valid phone number is required")
           )
         )(ContactInformation.apply)(ContactInformation.unapply)

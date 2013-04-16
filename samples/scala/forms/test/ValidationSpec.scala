@@ -48,7 +48,7 @@ class ValidationSpec extends Specification {
 
   type M = Map[String, Seq[String]]
   type J = JsValue
-/*
+
   "Form Validation" should {
 
     val __ = Path[M]()
@@ -119,13 +119,13 @@ class ValidationSpec extends Specification {
         .validate(invalid) mustEqual Failure(Seq((__ \ "informations" \ "label") -> Seq("validation.nonemptytext")))
     }
   }
-*/
+
   "Json Validation" should {
 
     val __ = Path[J]()
     val valid = validJson
     val invalid = invalidJson
-/*
+
     "extract data" in {
 
       (__ \ "firstname").validate[String]
@@ -194,7 +194,7 @@ class ValidationSpec extends Specification {
       (__ \ "informations" \ "label").validate(nonEmptyText)){ (_, _, _) }
         .validate(invalid) mustEqual Failure(Seq((__ \ "informations" \ "label") -> Seq("validation.nonemptytext")))
     }
-*/
+
     "perform complex validation" in {
       import models._
       import play.api.libs.functional.syntax._
@@ -221,7 +221,7 @@ class ValidationSpec extends Specification {
       val infoValidation =
        ((__ \ "label").validate(nonEmptyText) ~
         (__ \ "email").validate(optional(email)) ~
-        (__ \ "phones").validate(list(nonEmptyText))) (ContactInformation.apply _)
+        (__ \ "phones").validate(seq(nonEmptyText))) (ContactInformation.apply _)
 
       val contactValidation =
        ((__ \ "firstname").validate(nonEmptyText) ~
