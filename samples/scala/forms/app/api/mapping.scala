@@ -24,11 +24,13 @@ case class Path[I](path: List[KeyPathNode] = Nil) {
 
   def validate[O](sub: Rule[I, O])(implicit l: Path[I] => Mapping[String, I, I]): Rule[I, O] = {
     val parent = this
-    Rule(this compose sub.p, { p => d =>
+    Rule(parent compose sub.p, { p => d =>
       val v = l(parent)(d)
       v.fold(
         es => Failure(Seq(parent -> es)),
-        s  => sub.m(sub.p)(s))
+        s  => sub.m(sub.p)(s)).fail.map{ _.map {
+          case (path, errs) => (parent compose path) -> errs
+        }}
     }, sub.v)
   }
 
@@ -122,12 +124,13 @@ object Constraints {
   def seq[O](c: Constraint[O]): Constraint[Seq[O]] =
     vs => Validation.sequence(vs.map(c))
 
-  def seq[I, O](r: Rule[I, O])(implicit m: Mapping[String, I, Seq[I]]): Rule[I, Seq[O]] =
+  def seq[I, O](r: Rule[I, O])(implicit m: Mapping[String, I, Seq[I]]): Rule[I, Seq[O]] = {
     Rule(Path[I](), { p => d =>
       m(d).fold(
         errs => Failure(Seq(p -> errs)),
         is => Validation.sequence(is.map(r.m(p))))
     }, seq(r.v))
+  }
 
   def list[O](c: Constraint[O]): Constraint[List[O]] =
     seq(c)(_).map(_.toList)

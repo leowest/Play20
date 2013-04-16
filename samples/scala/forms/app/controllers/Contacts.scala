@@ -6,6 +6,8 @@ import play.api.data._
 import play.api.data.Forms._
 import play.api.data.validation.Constraints._
 
+import play.api.libs.json._
+
 import views._
 
 import models._
@@ -37,10 +39,7 @@ object Contacts extends Controller {
     )(Contact.apply)(Contact.unapply)
   )
 
-/*
-  val contact = {
-
-    import play.api.libs.json._
+  val contactValidation = {
     import play.api.data.validation2._
     import Mappings._
     import Constraints._
@@ -51,14 +50,14 @@ object Contacts extends Controller {
     val infoValidation =
       ((__ \ "label").validate(nonEmptyText) ~
       (__ \ "email").validate(optional(email)) ~
-      (__ \ "phones").validate(list(nonEmptyText))) (ContactInformation.apply _)
+      (__ \ "phones").validate(seq(pattern("""[0-9.+]+""".r)))) (ContactInformation.apply _)
 
     ((__ \ "firstname").validate(nonEmptyText) ~
     (__ \ "lastname").validate(nonEmptyText) ~
     (__ \ "company").validate[Option[String]] ~
     (__ \ "informations").validate(seq(infoValidation))) (Contact.apply _)
   }
-*/
+
 
   /**
    * Display an empty form.
@@ -87,14 +86,29 @@ object Contacts extends Controller {
     Ok(html.contact.form(contactForm.fill(existingContact)))
   }
 
+  private def negotiate: BodyParser[Either[Map[String,Seq[String]], JsValue]] = parse.using{ r =>
+    r.contentType match {
+      case Some("text/json" | "application/json") => parse.json.map(Right(_))
+      case _ => parse.urlFormEncoded.map(Left(_))
+    }
+  }
+
   /**
    * Handle form submission.
    */
-  def submit = Action { implicit request =>
-    contactForm.bindFromRequest.fold(
-      errors => BadRequest(html.contact.form(errors)),
-      contact => Ok(html.contact.summary(contact))
+  // curl http://localhost:9000/contacts -XPOST -H "Content-Type: application/json" -d "{\"firstname\":\"Julien\",\"lastname\":\"Tournay\",\"age\":27,\"informations\":[{\"label\":\"Personal\",\"email\":\"fakecontact@gmail.com\",\"phones\":[\"01.23.45.67.89\",\"98.76.54.32.10\"]}]}" -i
+  def submit = Action(negotiate) { implicit request =>
+    request.body.fold(
+      form => NotImplemented,
+      json =>
+        contactValidation.validate(json).fold(
+          err => BadRequest(err.toString),
+          _ => Ok)
     )
+    //contactForm.bindFromRequest.fold(
+    //  errors => BadRequest(html.contact.form(errors)),
+    //  contact => Ok(html.contact.summary(contact))
+    //)
   }
 
 }
