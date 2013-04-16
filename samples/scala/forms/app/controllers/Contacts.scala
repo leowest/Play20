@@ -96,6 +96,8 @@ object Contacts extends Controller {
   /**
    * Handle form submission.
    */
+  import play.api.data.validation2.Validations.pathWrite
+
   // curl http://localhost:9000/contacts -XPOST -H "Content-Type: application/json" -d "{\"firstname\":\"Julien\",\"lastname\":\"Tournay\",\"age\":27,\"informations\":[{\"label\":\"Personal\",\"email\":\"fakecontact@gmail.com\",\"phones\":[\"01.23.45.67.89\",\"98.76.54.32.10\"]}]}" -i
   def submit = Action(negotiate) { implicit request =>
     request.body.fold(
