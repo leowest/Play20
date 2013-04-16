@@ -17,13 +17,20 @@ object Validations {
       Rule(Path[I](), (_: Path[I]) => (_: I) => Success(a))
 
     override def map[A, B](m: Rule[I, A], f: A => B): Rule[I, B] =
-      Rule(m.p, { p => d => m.m(p)(d).map(f) })
+      Rule(m.p, { p => d =>
+        m.m(p)(d)
+         .fold(
+           errs => Failure(errs),
+           a => m.v(a).fail.map{ errs => Seq(p -> errs) })
+         .map(f)
+      })
 
     override def apply[A, B](mf: Rule[I, A => B], ma: Rule[I, A]): Rule[I, B] =
-      Rule(ma.p, { p => d =>
+      Rule(Path[I](), { p => d =>
         val a = ma.validate(d)
         val f = mf.validate(d)
-        a.flatMap(x => f.map(_(x)))
+        val res = (f *> a).flatMap(x => f.map(_(x)))
+        res
       })
   }
 
@@ -46,6 +53,11 @@ sealed trait Validation[E, +A] {
   def flatMap[X](f: A => Validation[E, X]): Validation[E, X] = this match {
     case Success(v) => f(v)
     case Failure(e) => Failure(e)
+  }
+
+  def fold[X](invalid: Seq[E] => X, valid: A => X): X = this match {
+    case Success(v) => valid(v)
+    case Failure(e) => invalid(e)
   }
 
   // TODO: rename

@@ -37,7 +37,8 @@ object Contacts extends Controller {
     )(Contact.apply)(Contact.unapply)
   )
 
-  def contact = {
+/*
+  val contact = {
 
     import play.api.libs.json._
     import play.api.data.validation2._
@@ -45,19 +46,19 @@ object Contacts extends Controller {
     import Constraints._
     import Validations._
 
-    val __ = Path[Request[JsValue]]()
+    val __ = Path[JsValue]()
 
     val infoValidation =
       ((__ \ "label").validate(nonEmptyText) ~
-      (__ \ "email").validate[Option[String]]/*(email)*/ ~
-      (__ \ "label").validate(nonEmptyText) ~
-      (__ \ "phones").validate(list(nonEmptyText))) {(_, _, _, _)}
+      (__ \ "email").validate(optional(email)) ~
+      (__ \ "phones").validate(list(nonEmptyText))) (ContactInformation.apply _)
 
-    (__ \ "firstname").validate(nonEmptyText) ~
+    ((__ \ "firstname").validate(nonEmptyText) ~
     (__ \ "lastname").validate(nonEmptyText) ~
     (__ \ "company").validate[Option[String]] ~
-    (__ \ "informations").validate(infoValidation)
+    (__ \ "informations").validate(seq(infoValidation))) (Contact.apply _)
   }
+*/
 
   /**
    * Display an empty form.
