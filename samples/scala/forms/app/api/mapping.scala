@@ -24,14 +24,14 @@ case class Path[I](path: List[KeyPathNode] = Nil) {
   def validate[O](v: Constraint[O])(implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
     Rule(this, (p: Path[I]) => (d: I) => m(p)(d).fail.map{ errs => Seq(p -> errs) }, v) // XXX: DRY "fail.map" thingy
 
-  def validate[O](sub: Rule[I, O])(implicit l: Path[I] => Mapping[String, I, I]): Rule[I, O] = {
+  def validate[J, O](sub: Rule[J, O])(implicit l: Path[I] => Mapping[String, I, J]): Rule[I, O] = {
     val parent = this
-    Rule(parent compose sub.p, { p => d =>
+    Rule(parent compose Path[I](sub.p.path), { p => d =>
       val v = l(parent)(d)
       v.fold(
         es => Failure(Seq(parent -> es)),
         s  => sub.m(sub.p)(s)).fail.map{ _.map {
-          case (path, errs) => (parent compose path) -> errs
+          case (path, errs) => (parent compose Path[I](path.path)) -> errs
         }}
     }, sub.v)
   }
@@ -59,16 +59,6 @@ object Mappings {
 
   implicit def stringAsInt: Mapping[String, String, Int] =
     Constraints.validateWith("validation.type-mismatch"){ (_: String).matches("-?[0-9]+") }(_).map(_.toInt)
-
-  implicit def mapAsSeqMap: Mapping[String, Map[String, Seq[String]], Seq[Map[String, Seq[String]]]] = { data =>
-    println("data: " + data)
-    //val h = data.groupBy { case t =>
-    //  println("dd " + t)
-    //  //k.split("\\.")(0).substring(0, k.indexOf("["))
-    //}
-    //println("h: " + h)
-    Success(Nil)
-  }
 
   import play.api.libs.json.{ KeyPathNode => JSKeyPathNode, _ }
   private def pathToJsPath(p: Path[JsValue]) =
@@ -109,7 +99,8 @@ object Mappings {
     v.flatMap(m)
   }
 
-  implicit def pickInMap[O](p: Path[Map[String, Seq[String]]])(implicit m: Mapping[String, Seq[String], O]): Mapping[String, Map[String, Seq[String]], O] = {
+  type M = Map[String, Seq[String]]
+  implicit def pickInMap[O](p: Path[M])(implicit m: Mapping[String, Seq[String], O]): Mapping[String, M, O] = {
     data =>
       val key = p.path.map(_.key).mkString(".")
       val validation: Validation[String, Seq[String]] =
@@ -118,15 +109,30 @@ object Mappings {
   }
 
   // Compiler needs this one apparently
-  implicit def pickSInMap[O](p: Path[Map[String, Seq[String]]])(implicit m: Mapping[String, String, O]): Mapping[String, Map[String, Seq[String]], Seq[O]] =
+  implicit def pickSInMap[O](p: Path[M])(implicit m: Mapping[String, String, O]): Mapping[String, M, Seq[O]] =
     pickInMap[Seq[O]](p)(seqAsSeq(m))
 
-  implicit def mapPickMap(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], Map[String, Seq[String]]] = { m =>
+  implicit def mapPickMap(p: Path[M]): Mapping[String, M, M] = { m =>
     val prefix = p.path.map(_.key).mkString(".") + "."
     val submap = m.filterKeys(_.startsWith(prefix)).map { case (k, v) =>
       k.substring(prefix.length) -> v
     }
     Success(submap)
+  }
+
+  implicit def mapPickSeqMap(p: Path[M]): Mapping[String, M, Seq[M]] = { m =>
+    val prefix = p.path.map(_.key).mkString(".")
+    val r = prefix + """\[([0-9]+)\]*\.(.*)"""
+
+    // XXX: ugly and clearly not efficient
+    val submaps: Seq[M] = m.filterKeys(_.matches(r)).groupBy { case (k, v) =>
+      val r.r(index, name) = k
+      index.toInt
+    }.toSeq.sortBy(_._1).map(_._2).map( _.map{ case (k, v) =>
+        val r.r(index, name) = k
+        name -> v
+    })
+    Success(submaps)
   }
 
 }
@@ -143,11 +149,11 @@ object Constraints {
   def seq[O](c: Constraint[O]): Constraint[Seq[O]] =
     vs => Validation.sequence(vs.map(c))
 
-  def seq[I, O](r: Rule[I, O])(implicit m: Mapping[String, I, Seq[I]]): Rule[I, Seq[O]] = {
-    Rule(Path[I](), { p => d =>
-      m(d).fold(
-        errs => Failure(Seq(p -> errs)),
-        is => Validation.sequence(is.map(r.m(p))))
+  def seq[I, O](r: Rule[I, O]): Rule[Seq[I], Seq[O]] = {
+    Rule(Path[Seq[I]](), { p => d =>
+      Validation.sequence(d.map(r.validate)).fail.map(errs => {
+        errs.map { case (p, es) => Path[Seq[I]](p.path) -> es }
+      })
     }, seq(r.v))
   }
 

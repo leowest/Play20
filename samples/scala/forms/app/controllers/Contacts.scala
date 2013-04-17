@@ -120,11 +120,10 @@ object Contacts extends Controller {
   // curl http://localhost:9000/contacts -XPOST -d "firstname=Julien&lastname=Tournay&age=27&informations[0].label=Personal&informations[0].email=fakecontact@gmail.com&informations[0].phones[0]=01.23.45.67.89&informations[0].phones[1]=98.76.54.32.10" -i
   def submit = Action(negotiate) { implicit request =>
     request.body.fold(
-      form => {
-        println(form)
-        println(contactMap.validate(form))
-        NotImplemented
-      },
+      form =>
+        contactMap.validate(form).fold(
+          err => BadRequest(Json.toJson(err)),
+          _ => Ok),
       json =>
         contactJson.validate(json).fold(
           err => BadRequest(Json.toJson(err)),
