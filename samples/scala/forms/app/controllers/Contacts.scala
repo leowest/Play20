@@ -115,6 +115,9 @@ object Contacts extends Controller {
    */
   import play.api.data.validation2.Validations.pathWrite
 
+  implicit val contactInfo = Json.format[ContactInformation]
+  implicit val contactFormat = Json.format[Contact]
+
   // curl http://localhost:9000/contacts -XPOST -H "Content-Type: application/json" -d "{\"firstname\":\"Julien\",\"lastname\":\"Tournay\",\"age\":27,\"informations\":[{\"label\":\"Personal\",\"email\":\"fakecontact@gmail.com\",\"phones\":[\"01.23.45.67.89\",\"98.76.54.32.10\"]}]}" -i
   // OR
   // curl http://localhost:9000/contacts -XPOST -d "firstname=Julien&lastname=Tournay&age=27&informations[0].label=Personal&informations[0].email=fakecontact@gmail.com&informations[0].phones[0]=01.23.45.67.89&informations[0].phones[1]=98.76.54.32.10" -i
@@ -123,11 +126,11 @@ object Contacts extends Controller {
       form =>
         contactMap.validate(form).fold(
           err => BadRequest(Json.toJson(err)),
-          _ => Ok),
+          contact => Ok(Json.toJson(contact))),
       json =>
         contactJson.validate(json).fold(
           err => BadRequest(Json.toJson(err)),
-          _ => Ok))
+          contact => Ok(Json.toJson(contact))))
     //contactForm.bindFromRequest.fold(
     //  errors => BadRequest(html.contact.form(errors)),
     //  contact => Ok(html.contact.summary(contact))

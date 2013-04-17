@@ -108,24 +108,33 @@ object Mappings {
       validation.flatMap(m)
   }
 
-  // Compiler needs this one apparently
-  implicit def pickSInMap[O](p: Path[M])(implicit m: Mapping[String, String, O]): Mapping[String, M, Seq[O]] =
-    pickInMap[Seq[O]](p)(seqAsSeq(m))
+  implicit def pickSInMap[O](p: Path[M])(implicit m: Mapping[String, String, O]): Mapping[String, M, Seq[O]] = { data =>
+    val prefix = p.path.map(_.key).mkString(".")
+    val r = prefix + """\[([0-9]+)\]"""
 
-  implicit def mapPickMap(p: Path[M]): Mapping[String, M, M] = { m =>
+    // TODO: DRY
+    val ss: Seq[String] = data.filterKeys(_.matches(r)).groupBy { case (k, v) =>
+      val r.r(index) = k
+      index.toInt
+    }.toSeq.sortBy(_._1)
+    .flatMap( _._2.toSeq.map{ case (k, v) => v }).flatten
+    Validation.sequence(ss.map(m))
+  }
+
+  implicit def mapPickMap(p: Path[M]): Mapping[String, M, M] = { data =>
     val prefix = p.path.map(_.key).mkString(".") + "."
-    val submap = m.filterKeys(_.startsWith(prefix)).map { case (k, v) =>
+    val submap = data.filterKeys(_.startsWith(prefix)).map { case (k, v) =>
       k.substring(prefix.length) -> v
     }
     Success(submap)
   }
 
-  implicit def mapPickSeqMap(p: Path[M]): Mapping[String, M, Seq[M]] = { m =>
+  implicit def mapPickSeqMap(p: Path[M]): Mapping[String, M, Seq[M]] = { data =>
     val prefix = p.path.map(_.key).mkString(".")
     val r = prefix + """\[([0-9]+)\]*\.(.*)"""
 
     // XXX: ugly and clearly not efficient
-    val submaps: Seq[M] = m.filterKeys(_.matches(r)).groupBy { case (k, v) =>
+    val submaps: Seq[M] = data.filterKeys(_.matches(r)).groupBy { case (k, v) =>
       val r.r(index, name) = k
       index.toInt
     }.toSeq.sortBy(_._1).map(_._2).map( _.map{ case (k, v) =>
