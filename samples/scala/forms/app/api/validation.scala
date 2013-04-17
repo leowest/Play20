@@ -1,9 +1,10 @@
 package play.api.data.validation2
 
 object Validations {
-  type Mapping[Err, From, To] = (From => Validation[Err, To])
+  @annotation.implicitNotFound("No implicit Mapping found from ${I} to ${O}. Try to define an implicit Mapping[${E}, ${I}, ${O}].")
+  type Mapping[E, I, O] = (I => Validation[E, O])
   type Constraint[T] = Mapping[String, T, T]
-  type VA[I, To] = Validation[(Path[I], Seq[String]), To]
+  type VA[I, O] = Validation[(Path[I], Seq[String]), O]
 
   import play.api.libs.functional._
 

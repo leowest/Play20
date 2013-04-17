@@ -49,17 +49,30 @@ object Mappings {
 
   import play.api.mvc.Request
 
+  implicit def IasI[I]: Mapping[String, I, I] = Success(_)
+
   implicit def seqAsO[O](implicit m: Mapping[String, String, O]): Mapping[String, Seq[String], O] =
     _.headOption.map(Success[String, String](_)).getOrElse(Failure[String, String](Seq("validation.required"))).flatMap(m)
+
+  implicit def seqAsSeq[O](implicit m: Mapping[String, String, O]): Mapping[String, Seq[String], Seq[O]] =
+    data => Validation.sequence(data.map(m))
 
   implicit def stringAsInt: Mapping[String, String, Int] =
     Constraints.validateWith("validation.type-mismatch"){ (_: String).matches("-?[0-9]+") }(_).map(_.toInt)
 
+  implicit def mapAsSeqMap: Mapping[String, Map[String, Seq[String]], Seq[Map[String, Seq[String]]]] = { data =>
+    println("data: " + data)
+    //val h = data.groupBy { case t =>
+    //  println("dd " + t)
+    //  //k.split("\\.")(0).substring(0, k.indexOf("["))
+    //}
+    //println("h: " + h)
+    Success(Nil)
+  }
+
   import play.api.libs.json.{ KeyPathNode => JSKeyPathNode, _ }
   private def pathToJsPath(p: Path[JsValue]) =
     play.api.libs.json.JsPath(p.path.map(k => JSKeyPathNode(k.key)))
-
-  implicit def IasI[I]: Mapping[String, I, I] = Success(_)
 
   implicit def jsonAsString: Mapping[String, JsValue, String] = {
     case JsString(v) => Success(v)
@@ -67,7 +80,7 @@ object Mappings {
   }
 
   implicit def jsonAsInt: Mapping[String, JsValue, Int] = {
-    case JsNumber(v) => Success(v.toInt)
+    case JsNumber(v) => Success(v.toInt) // XXX
     case _ => Failure(Seq("validation.type-mismatch"))
   }
 
@@ -103,6 +116,10 @@ object Mappings {
         data.get(key).map(Success[String, Seq[String]](_)).getOrElse{ Failure[String, Seq[String]](Seq("validation.required")) }
       validation.flatMap(m)
   }
+
+  // Compiler needs this one apparently
+  implicit def pickSInMap[O](p: Path[Map[String, Seq[String]]])(implicit m: Mapping[String, String, O]): Mapping[String, Map[String, Seq[String]], Seq[O]] =
+    pickInMap[Seq[O]](p)(seqAsSeq(m))
 
   implicit def mapPickMap(p: Path[Map[String, Seq[String]]]): Mapping[String, Map[String, Seq[String]], Map[String, Seq[String]]] = { m =>
     val prefix = p.path.map(_.key).mkString(".") + "."

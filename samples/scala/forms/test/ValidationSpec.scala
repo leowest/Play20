@@ -235,7 +235,7 @@ class ValidationSpec extends Specification {
 
       contactValidation.validate(validJson) mustEqual(Success(expected))
       contactValidation.validate(invalidJson) mustEqual(Failure(Seq(
-        (__ \ "label") -> Seq("validation.nonemptytext")))) // TODO: keep complete path
+        (__ \ "informations" \"label") -> Seq("validation.nonemptytext"))))
     }
 
   }

@@ -12,6 +12,8 @@ import views._
 
 import models._
 
+import play.api.data.validation2.Path
+
 object Contacts extends Controller {
 
   /**
@@ -39,13 +41,28 @@ object Contacts extends Controller {
     )(Contact.apply)(Contact.unapply)
   )
 
-  val contactValidation = {
-    import play.api.data.validation2._
-    import Mappings._
-    import Constraints._
-    import Validations._
+  import play.api.data.validation2._
+  import Mappings._
+  import Constraints._
+  import Validations._
 
+  def contactJson = {
     val __ = Path[JsValue]()
+
+    val infoValidation =
+      ((__ \ "label").validate(nonEmptyText) ~
+      (__ \ "email").validate(optional(email)) ~
+      (__ \ "phones").validate(seq(pattern("""[0-9.+]+""".r)))) (ContactInformation.apply _)
+
+    ((__ \ "firstname").validate(nonEmptyText) ~
+    (__ \ "lastname").validate(nonEmptyText) ~
+    (__ \ "company").validate[Option[String]] ~
+    (__ \ "informations").validate(seq(infoValidation))) (Contact.apply _)
+  }
+
+  // TODO: avoid code repetition
+  def contactMap = {
+    val __ = Path[Map[String, Seq[String]]]()
 
     val infoValidation =
       ((__ \ "label").validate(nonEmptyText) ~
@@ -99,11 +116,17 @@ object Contacts extends Controller {
   import play.api.data.validation2.Validations.pathWrite
 
   // curl http://localhost:9000/contacts -XPOST -H "Content-Type: application/json" -d "{\"firstname\":\"Julien\",\"lastname\":\"Tournay\",\"age\":27,\"informations\":[{\"label\":\"Personal\",\"email\":\"fakecontact@gmail.com\",\"phones\":[\"01.23.45.67.89\",\"98.76.54.32.10\"]}]}" -i
+  // OR
+  // curl http://localhost:9000/contacts -XPOST -d "firstname=Julien&lastname=Tournay&age=27&informations[0].label=Personal&informations[0].email=fakecontact@gmail.com&informations[0].phones[0]=01.23.45.67.89&informations[0].phones[1]=98.76.54.32.10" -i
   def submit = Action(negotiate) { implicit request =>
     request.body.fold(
-      form => NotImplemented,
+      form => {
+        println(form)
+        println(contactMap.validate(form))
+        NotImplemented
+      },
       json =>
-        contactValidation.validate(json).fold(
+        contactJson.validate(json).fold(
           err => BadRequest(Json.toJson(err)),
           _ => Ok))
     //contactForm.bindFromRequest.fold(
