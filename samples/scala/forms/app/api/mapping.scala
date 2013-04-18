@@ -1,8 +1,8 @@
 package play.api.data.validation2
 
 import scala.language.higherKinds
-
 import scala.language.implicitConversions
+
 import Validations._
 
 case class Rule[I, O](p: Path[I], m: Path[I] => Mapping[(Path[I], Seq[String]), I, O], v: Constraint[O] = Constraints.noConstraint[O]) {
@@ -19,14 +19,13 @@ case class IdxPathNode(idx: Int) extends PathNode {
   override def toString = s"[$idx]"
 }
 
-//object \ {
-//  def unapply[I](p1: Path[I]): Option[Path[I]] = ???
-//}
-
 case class Path[I](path: List[PathNode] = Nil) {
 
-  def \(child: String): Path[I] = this \ KeyPathNode(child)
+  def \(key: String): Path[I] = this \ KeyPathNode(key)
+  def \(idx: Int): Path[I] = this \ IdxPathNode(idx)
   def \(child: PathNode): Path[I] = Path(path :+ child)
+
+  def as[J] = Path[J](path)
 
   def compose(p: Path[I]): Path[I] = Path(this.path ++ p.path)
 
@@ -48,7 +47,10 @@ case class Path[I](path: List[PathNode] = Nil) {
   def validate[O](implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
     validate(Constraints.noConstraint[O])
 
-  override def toString = "/" + path.mkString("/")
+  override def toString = "/" + path.head.toString + path.tail.foldLeft("") {
+    case (path, IdxPathNode(i)) => path + s"[$i]"
+    case (path, KeyPathNode(k)) => path + "/" + k
+  }
 }
 
 object JsPath extends Path[play.api.libs.json.JsValue](Nil)
@@ -178,9 +180,16 @@ object Constraints {
 
   def seq[I, O](r: Rule[I, O]): Rule[Seq[I], Seq[O]] = {
     Rule(Path[Seq[I]](), { p => d =>
-      Validation.sequence(d.map(r.validate)).fail.map(errs => {
-        errs.map { case (p, es) => Path[Seq[I]](p.path) -> es }
-      })
+      val vs = d.map(r.validate)
+
+      val withI = vs.zipWithIndex.map { case (v, i) =>
+        v.fail.map { errs =>
+          errs.map { case (path, es) => (p.as[Seq[I]] \ i).compose(path.as[Seq[I]]) -> es }
+        }
+      }
+
+      Validation.sequence(withI)
+
     }, seq(r.v))
   }
 

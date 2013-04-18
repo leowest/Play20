@@ -87,8 +87,8 @@ object Contacts extends Controller {
       form =>
         contactValidation[Map[String, Seq[String]]].validate(form).fold(
           err => {
-            play.Logger.debug(form)
-            play.Logger.debug(err)
+            play.Logger.debug(form.toString)
+            play.Logger.debug(err.toString)
             BadRequest(html.contact.form(Form(form, err)))
           },
           contact => Ok(html.contact.summary(contact))),

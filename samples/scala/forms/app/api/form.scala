@@ -22,19 +22,12 @@ case class Form[T](data: Map[String, Seq[String]] = Map.empty, errors: Seq[(Path
   def apply(key: String): Field = apply(Form.asPath(key))
 
   def apply(path: Path[Map[String, Seq[String]]]): Field = {
-    val es = errors.flatMap {
-      case e @ (p, es) if p == path =>
-        es.map(error => FormError(p, error))
-      case _ => Nil
-    }
-
     val value = data.get(Form.asKey(path)).flatMap(_.headOption)
-
-    Field(this, path, es, value)
+    Field(this, path, value)
   }
 }
 
-case class Field(private val form: Form[_], path: Path[Map[String, Seq[String]]], errors: Seq[FormError], value: Option[String]) {
+case class Field(private val form: Form[_], path: Path[Map[String, Seq[String]]], value: Option[String]) {
   lazy val error: Option[FormError] = errors.headOption
   lazy val hasErrors: Boolean = !errors.isEmpty
 
@@ -43,20 +36,19 @@ case class Field(private val form: Form[_], path: Path[Map[String, Seq[String]]]
   }
 
   def apply(index: Int): Field = {
-    apply(Path[Map[String, Seq[String]]](IdxPathNode(index) :: Nil))
+    apply(Path[Map[String, Seq[String]]]() \ index)
   }
 
-  def apply(_path: Path[Map[String, Seq[String]]]): Field = {
-    val prefix = Form.asKey(_path)
-
-    val d = form.data.filter(_._1.startsWith(prefix)).map(_._2).flatten
-
-    val errs: Seq[FormError] = errors.filter(_.path.path.take(_path.path.size) == _path).map{ f =>
-      val p = Path[Map[String, Seq[String]]](f.path.path.drop(_path.path.size))
-      FormError(p, f.message, f.args)
+  def errors = form.errors.filter(_._1.path.startsWith(path.path))
+    .flatMap { case (p, errs) =>
+      errs.map(e => FormError(p, e))
     }
 
-    Field(form, path.compose(_path), errs, d.headOption)
+  def apply(_path: Path[Map[String, Seq[String]]]): Field = {
+    val expanded = path.compose(_path)
+    val prefix = Form.asKey(expanded)
+    val d = form.data.filter(_._1.startsWith(prefix)).map(_._2).flatten
+    Field(form, expanded, d.headOption)
   }
 
   def name = Form.asKey(path)
