@@ -16,38 +16,13 @@ import play.api.data.validation2.Path
 
 object Contacts extends Controller {
 
-  /**
-   * Contact Form definition.
-   */
-  val contactForm: Form[Contact] = Form(
-
-    // Defines a mapping that will handle Contact values
-    mapping(
-      "firstname" -> nonEmptyText,
-      "lastname" -> nonEmptyText,
-      "company" -> optional(text),
-
-      // Defines a repeated mapping
-      "informations" -> seq(
-        mapping(
-          "label" -> nonEmptyText,
-          "email" -> optional(email),
-          "phones" -> seq(
-            text verifying pattern("""[0-9.+]+""".r, error="A valid phone number is required")
-          )
-        )(ContactInformation.apply)(ContactInformation.unapply)
-      )
-
-    )(Contact.apply)(Contact.unapply)
-  )
-
   import play.api.data.validation2._
   import Mappings._
   import Constraints._
   import Validations._
 
-  def contactJson = {
-    val __ = Path[JsValue]()
+  def contactValidation[I](implicit i1: Path[I] => Mapping[String, I, String], i2: Path[I] => Mapping[String, I, Seq[String]], i3: Path[I] => Mapping[String, I, Seq[I]]) = {
+    val __ = Path[I]()
 
     val infoValidation =
       ((__ \ "label").validate(nonEmptyText) ~
@@ -60,27 +35,13 @@ object Contacts extends Controller {
     (__ \ "informations").validate(seq(infoValidation))) (Contact.apply _)
   }
 
-  // TODO: avoid code repetition
-  def contactMap = {
-    val __ = Path[Map[String, Seq[String]]]()
-
-    val infoValidation =
-      ((__ \ "label").validate(nonEmptyText) ~
-      (__ \ "email").validate(optional(email)) ~
-      (__ \ "phones").validate(seq(pattern("""[0-9.+]+""".r)))) (ContactInformation.apply _)
-
-    ((__ \ "firstname").validate(nonEmptyText) ~
-    (__ \ "lastname").validate(nonEmptyText) ~
-    (__ \ "company").validate[Option[String]] ~
-    (__ \ "informations").validate(seq(infoValidation))) (Contact.apply _)
-  }
-
+  import play.api.data.validation2.Form
 
   /**
    * Display an empty form.
    */
   def form = Action {
-    Ok(html.contact.form(contactForm));
+    Ok(html.contact.form(Form[Contact]()));
   }
 
   /**
@@ -100,7 +61,7 @@ object Contacts extends Controller {
         )
       )
     )
-    Ok(html.contact.form(contactForm.fill(existingContact)))
+    Ok(html.contact.form(Form(Map.empty, Nil, Some(existingContact))))
   }
 
   private def negotiate: BodyParser[Either[Map[String,Seq[String]], JsValue]] = parse.using{ r =>
@@ -124,17 +85,17 @@ object Contacts extends Controller {
   def submit = Action(negotiate) { implicit request =>
     request.body.fold(
       form =>
-        contactMap.validate(form).fold(
-          err => BadRequest(Json.toJson(err)),
-          contact => Ok(Json.toJson(contact))),
+        contactValidation[Map[String, Seq[String]]].validate(form).fold(
+          err => {
+            play.Logger.debug(form)
+            play.Logger.debug(err)
+            BadRequest(html.contact.form(Form(form, err)))
+          },
+          contact => Ok(html.contact.summary(contact))),
       json =>
-        contactJson.validate(json).fold(
+        contactValidation[JsValue].validate(json).fold(
           err => BadRequest(Json.toJson(err)),
           contact => Ok(Json.toJson(contact))))
-    //contactForm.bindFromRequest.fold(
-    //  errors => BadRequest(html.contact.form(errors)),
-    //  contact => Ok(html.contact.summary(contact))
-    //)
   }
 
 }

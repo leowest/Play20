@@ -14,10 +14,19 @@ sealed trait PathNode
 case class KeyPathNode(key: String) extends PathNode {
   override def toString = key
 }
-case class Path[I](path: List[KeyPathNode] = Nil) {
+
+case class IdxPathNode(idx: Int) extends PathNode {
+  override def toString = s"[$idx]"
+}
+
+//object \ {
+//  def unapply[I](p1: Path[I]): Option[Path[I]] = ???
+//}
+
+case class Path[I](path: List[PathNode] = Nil) {
 
   def \(child: String): Path[I] = this \ KeyPathNode(child)
-  def \(child: KeyPathNode): Path[I] = Path(path :+ child)
+  def \(child: PathNode): Path[I] = Path(path :+ child)
 
   def compose(p: Path[I]): Path[I] = Path(this.path ++ p.path)
 
@@ -60,9 +69,12 @@ object Mappings {
   implicit def stringAsInt: Mapping[String, String, Int] =
     Constraints.validateWith("validation.type-mismatch"){ (_: String).matches("-?[0-9]+") }(_).map(_.toInt)
 
-  import play.api.libs.json.{ KeyPathNode => JSKeyPathNode, _ }
+  import play.api.libs.json.{ KeyPathNode => JSKeyPathNode, IdxPathNode => JIdxPathNode, _ }
   private def pathToJsPath(p: Path[JsValue]) =
-    play.api.libs.json.JsPath(p.path.map(k => JSKeyPathNode(k.key)))
+    play.api.libs.json.JsPath(p.path.map{
+      case KeyPathNode(key) => JSKeyPathNode(key)
+      case IdxPathNode(i) => JIdxPathNode(i)
+    })
 
   implicit def jsonAsString: Mapping[String, JsValue, String] = {
     case JsString(v) => Success(v)
@@ -100,16 +112,22 @@ object Mappings {
   }
 
   type M = Map[String, Seq[String]]
+
+  private def toMapKey(p: Path[M]) = p.path.head.toString + p.path.tail.foldLeft("") {
+    case (path, IdxPathNode(i)) => path + s"[$i]"
+    case (path, KeyPathNode(k)) => path + "." + k
+  }
+
   implicit def pickInMap[O](p: Path[M])(implicit m: Mapping[String, Seq[String], O]): Mapping[String, M, O] = {
     data =>
-      val key = p.path.map(_.key).mkString(".")
+      val key = toMapKey(p)
       val validation: Validation[String, Seq[String]] =
         data.get(key).map(Success[String, Seq[String]](_)).getOrElse{ Failure[String, Seq[String]](Seq("validation.required")) }
       validation.flatMap(m)
   }
 
   implicit def pickSInMap[O](p: Path[M])(implicit m: Mapping[String, String, O]): Mapping[String, M, Seq[O]] = { data =>
-    val prefix = p.path.map(_.key).mkString(".")
+    val prefix = toMapKey(p)
     val r = prefix + """\[([0-9]+)\]"""
 
     // TODO: DRY
@@ -122,7 +140,7 @@ object Mappings {
   }
 
   implicit def mapPickMap(p: Path[M]): Mapping[String, M, M] = { data =>
-    val prefix = p.path.map(_.key).mkString(".") + "."
+    val prefix = toMapKey(p) + "."
     val submap = data.filterKeys(_.startsWith(prefix)).map { case (k, v) =>
       k.substring(prefix.length) -> v
     }
@@ -130,7 +148,7 @@ object Mappings {
   }
 
   implicit def mapPickSeqMap(p: Path[M]): Mapping[String, M, Seq[M]] = { data =>
-    val prefix = p.path.map(_.key).mkString(".")
+    val prefix = toMapKey(p)
     val r = prefix + """\[([0-9]+)\]*\.(.*)"""
 
     // XXX: ugly and clearly not efficient
