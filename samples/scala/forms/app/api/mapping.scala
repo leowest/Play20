@@ -19,6 +19,15 @@ case class IdxPathNode(idx: Int) extends PathNode {
   override def toString = s"[$idx]"
 }
 
+object \: {
+  def unapply[I](path: Path[I]): Option[(PathNode, Path[I])] = {
+    path match {
+      case Path(Nil) => None
+      case Path(n :: ns) => Some(n -> Path[I](ns))
+    }
+  }
+}
+
 case class Path[I](path: List[PathNode] = Nil) {
 
   def \(key: String): Path[I] = this \ KeyPathNode(key)
