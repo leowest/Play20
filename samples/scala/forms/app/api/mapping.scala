@@ -47,9 +47,12 @@ case class Path[I](path: List[PathNode] = Nil) {
   def validate[O](implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
     validate(Constraints.noConstraint[O])
 
-  override def toString = "/" + path.head.toString + path.tail.foldLeft("") {
-    case (path, IdxPathNode(i)) => path + s"[$i]"
-    case (path, KeyPathNode(k)) => path + "/" + k
+  override def toString = this.path match {
+    case Nil => "/"
+    case hs => hs.foldLeft("") {
+      case (path, IdxPathNode(i)) => path + s"[$i]"
+      case (path, KeyPathNode(k)) => path + "/" + k
+    }
   }
 }
 
@@ -175,6 +178,7 @@ object Constraints {
   def optional[O](c: Constraint[O]): Constraint[Option[O]] =
     _.map(v => c(v).map(Some.apply)).getOrElse(Success(None))
 
+  //TODO: keep index in path
   def seq[O](c: Constraint[O]): Constraint[Seq[O]] =
     vs => Validation.sequence(vs.map(c))
 

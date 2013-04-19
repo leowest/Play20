@@ -12,8 +12,16 @@ object Form {
     case (path, KeyPathNode(k)) => path + "." + k
   }
 
-  def asPath(key: String) =
-    (__ \ key)
+  def asPath(k: String) = {
+    val Indexed = """^(.*)\[([0-9]+)\]$""".r
+    val keys = k.split("\\.").flatMap {
+      case Indexed(name, i) =>
+        Seq(KeyPathNode(name), IdxPathNode(i.toInt))
+      case n =>
+        Seq(KeyPathNode(n))
+    }
+    keys.foldLeft(__)(_ \ _)
+  }
 }
 
 case class Form[T](data: Map[String, Seq[String]] = Map.empty, errors: Seq[(Path[Map[String,Seq[String]]], Seq[String])] = Nil, value: Option[T] = None) {
@@ -54,7 +62,13 @@ case class Field(private val form: Form[_], path: Path[Map[String, Seq[String]]]
   def name = Form.asKey(path)
 
   lazy val indexes: Seq[Int] = {
-    Nil // TODO
+    form.data.keys.map(Form.asPath)
+      .filter(_.path.startsWith(path.path))
+      .map(_.path.drop(path.path.length).head)
+      .flatMap{
+        case IdxPathNode(i) => Seq(i)
+        case _ => Seq()
+      }.toSeq
   }
 }
 
