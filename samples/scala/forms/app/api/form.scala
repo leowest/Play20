@@ -22,6 +22,8 @@ object Form {
     }
     keys.foldLeft(__)(_ \ _)
   }
+
+  def fill[T](t: T)(implicit w: Writes[T, Map[String, Seq[String]]]) = Form(w.writes(t), Nil, Some(t))
 }
 
 case class Form[T](data: Map[String, Seq[String]] = Map.empty, errors: Seq[(Path[Map[String,Seq[String]]], Seq[String])] = Nil, value: Option[T] = None) {

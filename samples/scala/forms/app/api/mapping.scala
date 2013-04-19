@@ -56,6 +56,8 @@ case class Path[I](path: List[PathNode] = Nil) {
   def validate[O](implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
     validate(Constraints.noConstraint[O])
 
+  def write[In](implicit w: Path[I] => Writes[In, I]) = w(this)
+
   override def toString = this.path match {
     case Nil => "/"
     case hs => hs.foldLeft("") {
@@ -104,12 +106,6 @@ object Mappings {
     case JsArray(vs) => Validation.sequence(vs.map(m))
     case _ => Failure(Seq("validation.type-mismatch"))
   }
-
-/*
-  // XXX: diverging implicit issue (validation is covariant on A)
-  implicit def jsonAsList[O](implicit m: Mapping[String, JsValue, O]): Mapping[String, JsValue, List[O]] =
-    jsonAsSeq[O](m)(_).map(_.toList)
-*/
 
   implicit def pickInRequest[I, O](p: Path[Request[I]])(implicit pick: Path[I] => Mapping[String, I, O]): Mapping[String, Request[I], O] =
     request => pick(Path[I](p.path))(request.body)
