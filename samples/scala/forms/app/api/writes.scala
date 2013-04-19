@@ -55,6 +55,8 @@ trait DefaultWrites {
       }.toMap
     }
 
+  // implicit def writeJson[I](p: Path[JsValue])(implicit w: Writes[I, JsValue]): Writes[I, JsValue] = ???
+
   implicit def writeSeqToMap[I](p: Path[Map[String, Seq[String]]])(implicit w: Writes[I, Map[String, Seq[String]]]): Writes[Seq[I], Map[String, Seq[String]]] =
     Writes{(is: Seq[I]) =>
       val ms = is.zipWithIndex.map { case (i, index) =>

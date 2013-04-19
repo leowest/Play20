@@ -11,12 +11,12 @@ class WritesSpec extends Specification {
   import models._
 
   val contact = Contact("Julien", "Tournay", None, Seq(
-    ContactInformation("Personnal", Some("fakecontact@gmail.com"), Seq("01.23.45.67.89", "98.76.54.32.10"))))
+    ContactInformation("Personal", Some("fakecontact@gmail.com"), Seq("01.23.45.67.89", "98.76.54.32.10"))))
 
   val contactMap = Map(
     "firstname" -> Seq("Julien"),
     "lastname" -> Seq("Tournay"),
-    "age" -> Seq("27"),
+    "company" -> Seq(),
     "informations[0].label" -> Seq("Personal"),
     "informations[0].email" -> Seq("fakecontact@gmail.com"),
     "informations[0].phones[0]" -> Seq("01.23.45.67.89"),
@@ -25,7 +25,6 @@ class WritesSpec extends Specification {
   val contactJson = Json.obj(
     "firstname" -> "Julien",
     "lastname" -> "Tournay",
-    "age" -> 27,
     "informations" -> Json.obj(
       "label" -> "Personal",
       "email" -> "fakecontact@gmail.com",
@@ -57,8 +56,9 @@ class WritesSpec extends Specification {
         (__ \ "informations").write[Seq[ContactInformation]]) (unlift(Contact.unapply _))
       }
 
-      Writes(contact) mustEqual contactMap
+      Writes[Contact, M](contact) mustEqual contactMap
     }
+
   }
 
 }

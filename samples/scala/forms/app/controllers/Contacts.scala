@@ -49,9 +49,6 @@ object Contacts extends Controller {
       (__ \ "email").write[Option[String]] ~
       (__ \ "phones").write[Seq[String]]) (unlift(ContactInformation.unapply _))
 
-    def x(p: Path[Map[String, Seq[String]]]) = writeSeqToMap[ContactInformation](p)
-    //implicitly[Path[Map[String, Seq[String]]] => Writes[Seq[ContactInformation], Map[String, Seq[String]]]]
-
     ((__ \ "firstname").write[String] ~
     (__ \ "lastname").write[String] ~
     (__ \ "company").write[Option[String]] ~
