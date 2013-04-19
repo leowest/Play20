@@ -38,10 +38,10 @@ case class Path[I](path: List[PathNode] = Nil) {
 
   def compose(p: Path[I]): Path[I] = Path(this.path ++ p.path)
 
-  def validate[O](v: Constraint[O])(implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
+  def read[O](v: Constraint[O])(implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
     Rule(this, (p: Path[I]) => (d: I) => m(p)(d).fail.map{ errs => Seq(p -> errs) }, v) // XXX: DRY "fail.map" thingy
 
-  def validate[J, O](sub: Rule[J, O])(implicit l: Path[I] => Mapping[String, I, J]): Rule[I, O] = {
+  def read[J, O](sub: Rule[J, O])(implicit l: Path[I] => Mapping[String, I, J]): Rule[I, O] = {
     val parent = this
     Rule(parent compose Path[I](sub.p.path), { p => d =>
       val v = l(parent)(d)
@@ -53,8 +53,8 @@ case class Path[I](path: List[PathNode] = Nil) {
     }, sub.v)
   }
 
-  def validate[O](implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
-    validate(Constraints.noConstraint[O])
+  def read[O](implicit m: Path[I] => Mapping[String, I, O]): Rule[I, O] =
+    read(Constraints.noConstraint[O])
 
   def write[In](implicit w: Path[I] => Writes[In, I]) = w(this)
 

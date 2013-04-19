@@ -57,51 +57,50 @@ class ValidationSpec extends Specification {
 
     "extract data" in {
 
-      (__ \ "firstname").validate[String]
-        .validate(valid) mustEqual(Success("Julien"))
+      (__ \ "firstname").read[String].validate(valid) mustEqual(Success("Julien"))
 
       val errPath = __ \ "foo"
       val error = Failure(Seq(errPath -> Seq("validation.required")))
-      errPath.validate[String].validate(invalid)  mustEqual(error)
+      errPath.read[String].validate(invalid)  mustEqual(error)
     }
 
     "validate data" in {
-      (__ \ "firstname").validate(nonEmptyText).validate(valid) mustEqual(Success("Julien"))
+      (__ \ "firstname").read(nonEmptyText).validate(valid) mustEqual(Success("Julien"))
 
       val p = (__ \ "informations" \ "label")
-      p.validate(nonEmptyText).validate(invalid)  mustEqual(Failure(Seq(p -> Seq("validation.nonemptytext"))))
+      p.read(nonEmptyText).validate(invalid)  mustEqual(Failure(Seq(p -> Seq("validation.nonemptytext"))))
     }
 
     "validate optional" in {
-      (__ \ "firstname").validate[Option[String]].validate(valid) mustEqual(Success(Some("Julien")))
-      (__ \ "foobar").validate[Option[String]].validate(valid) mustEqual(Success(None))
+      (__ \ "firstname").read[Option[String]].validate(valid) mustEqual(Success(Some("Julien")))
+      (__ \ "foobar").read[Option[String]].validate(valid) mustEqual(Success(None))
     }
 
     "validate deep" in {
       val p = (__ \ "informations" \ "label")
 
-      (__ \ "informations").validate(
-        (__ \ "label").validate(nonEmptyText)).validate(valid) mustEqual(Success("Personal"))
+      (__ \ "informations").read(
+        (__ \ "label").read(nonEmptyText)).validate(valid) mustEqual(Success("Personal"))
 
-      (__ \ "informations").validate(
-        (__ \ "label").validate(nonEmptyText)).validate(invalid) mustEqual(Failure(Seq(p -> Seq("validation.nonemptytext"))))
+      (__ \ "informations").read(
+        (__ \ "label").read(nonEmptyText)).validate(invalid) mustEqual(Failure(Seq(p -> Seq("validation.nonemptytext"))))
     }
 
 
     "coerce type" in {
-      (__ \ "age").validate[Int].validate(valid) mustEqual(Success(27))
-      (__ \ "firstname").validate[Int].validate(valid) mustEqual(Failure(Seq((__ \ "firstname") -> Seq("validation.type-mismatch"))))
+      (__ \ "age").read[Int].validate(valid) mustEqual(Success(27))
+      (__ \ "firstname").read[Int].validate(valid) mustEqual(Failure(Seq((__ \ "firstname") -> Seq("validation.type-mismatch"))))
     }
 
     "compose constraints" in {
       // TODO: create MonoidOps
       import Validations._
       val composed = monoidConstraint.append(nonEmptyText, minLength(3))
-      (__ \ "firstname").validate(composed).validate(valid) mustEqual(Success("Julien"))
+      (__ \ "firstname").read(composed).validate(valid) mustEqual(Success("Julien"))
 
       val p = __ \ "informations" \ "label"
       val err = Failure(Seq(p -> Seq("validation.nonemptytext", "validation.minLength")))
-      p.validate(composed).validate(invalid) mustEqual(err)
+      p.read(composed).validate(invalid) mustEqual(err)
     }
 
 
@@ -109,13 +108,13 @@ class ValidationSpec extends Specification {
       import play.api.libs.functional.syntax._
       import Validations._
 
-      ((__ \ "firstname").validate(nonEmptyText) ~
-        (__ \ "lastname").validate(nonEmptyText)){ _ -> _ }
+      ((__ \ "firstname").read(nonEmptyText) ~
+        (__ \ "lastname").read(nonEmptyText)){ _ -> _ }
           .validate(valid) mustEqual Success("Julien" -> "Tournay")
 
-      ((__ \ "firstname").validate(nonEmptyText) ~
-      (__ \ "lastname").validate(nonEmptyText) ~
-      (__ \ "informations" \ "label").validate(nonEmptyText)){ (_, _, _) }
+      ((__ \ "firstname").read(nonEmptyText) ~
+      (__ \ "lastname").read(nonEmptyText) ~
+      (__ \ "informations" \ "label").read(nonEmptyText)){ (_, _, _) }
         .validate(invalid) mustEqual Failure(Seq((__ \ "informations" \ "label") -> Seq("validation.nonemptytext")))
     }
   }
@@ -128,70 +127,70 @@ class ValidationSpec extends Specification {
 
     "extract data" in {
 
-      (__ \ "firstname").validate[String]
+      (__ \ "firstname").read[String]
         .validate(valid) mustEqual(Success("Julien"))
 
       val errPath = __ \ "foo"
       val error = Failure(Seq(errPath -> Seq("validation.required")))
-      errPath.validate[String].validate(invalid)  mustEqual(error)
+      errPath.read[String].validate(invalid)  mustEqual(error)
     }
 
     "validate data" in {
-      (__ \ "firstname").validate(nonEmptyText).validate(valid) mustEqual(Success("Julien"))
+      (__ \ "firstname").read(nonEmptyText).validate(valid) mustEqual(Success("Julien"))
 
       val p = (__ \ "informations" \ "label")
-      p.validate(nonEmptyText).validate(invalid)  mustEqual(Failure(Seq(p -> Seq("validation.nonemptytext"))))
+      p.read(nonEmptyText).validate(invalid)  mustEqual(Failure(Seq(p -> Seq("validation.nonemptytext"))))
     }
 
     "validate optional" in {
-      (__ \ "firstname").validate[Option[String]].validate(valid) mustEqual(Success(Some("Julien")))
-      (__ \ "foobar").validate[Option[String]].validate(valid) mustEqual(Success(None))
+      (__ \ "firstname").read[Option[String]].validate(valid) mustEqual(Success(Some("Julien")))
+      (__ \ "foobar").read[Option[String]].validate(valid) mustEqual(Success(None))
     }
 
     "validate deep" in {
       val p = (__ \ "informations" \ "label")
 
-      (__ \ "informations").validate(
-        (__ \ "label").validate(nonEmptyText)).validate(valid) mustEqual(Success("Personal"))
+      (__ \ "informations").read(
+        (__ \ "label").read(nonEmptyText)).validate(valid) mustEqual(Success("Personal"))
 
-      (__ \ "informations").validate(
-        (__ \ "label").validate(nonEmptyText)).validate(invalid) mustEqual(Failure(Seq(p -> Seq("validation.nonemptytext"))))
+      (__ \ "informations").read(
+        (__ \ "label").read(nonEmptyText)).validate(invalid) mustEqual(Failure(Seq(p -> Seq("validation.nonemptytext"))))
     }
 
     "coerce type" in {
-      (__ \ "age").validate[Int].validate(valid) mustEqual(Success(27))
-      (__ \ "firstname").validate[Int].validate(valid) mustEqual(Failure(Seq((__ \ "firstname") -> Seq("validation.type-mismatch"))))
+      (__ \ "age").read[Int].validate(valid) mustEqual(Success(27))
+      (__ \ "firstname").read[Int].validate(valid) mustEqual(Failure(Seq((__ \ "firstname") -> Seq("validation.type-mismatch"))))
     }
 
     "compose constraints" in {
       // TODO: create MonoidOps
       import Validations._
       val composed = monoidConstraint.append(nonEmptyText, minLength(3))
-      (__ \ "firstname").validate(composed).validate(valid) mustEqual(Success("Julien"))
+      (__ \ "firstname").read(composed).validate(valid) mustEqual(Success("Julien"))
 
       val p = __ \ "informations" \ "label"
       val err = Failure(Seq(p -> Seq("validation.nonemptytext", "validation.minLength")))
-      p.validate(composed).validate(invalid) mustEqual(err)
+      p.read(composed).validate(invalid) mustEqual(err)
     }
 
     "compose validations" in {
       import play.api.libs.functional.syntax._
       import Validations._
 
-      ((__ \ "firstname").validate(nonEmptyText) ~
-        (__ \ "lastname").validate(nonEmptyText)){ _ -> _ }
+      ((__ \ "firstname").read(nonEmptyText) ~
+        (__ \ "lastname").read(nonEmptyText)){ _ -> _ }
           .validate(valid) mustEqual Success("Julien" -> "Tournay")
 
       val j = Json.obj("firstname" -> "", "lastname" -> "")
-      ((__ \ "firstname").validate(nonEmptyText) ~
-       (__ \ "lastname").validate(nonEmptyText)){ _ -> _ }
+      ((__ \ "firstname").read(nonEmptyText) ~
+       (__ \ "lastname").read(nonEmptyText)){ _ -> _ }
           .validate(j) mustEqual Failure(Seq(
             (__ \ "firstname") -> Seq("validation.nonemptytext"),
             (__ \ "lastname") -> Seq("validation.nonemptytext")))
 
-      ((__ \ "firstname").validate(nonEmptyText) ~
-      (__ \ "lastname").validate(nonEmptyText) ~
-      (__ \ "informations" \ "label").validate(nonEmptyText)){ (_, _, _) }
+      ((__ \ "firstname").read(nonEmptyText) ~
+      (__ \ "lastname").read(nonEmptyText) ~
+      (__ \ "informations" \ "label").read(nonEmptyText)){ (_, _, _) }
         .validate(invalid) mustEqual Failure(Seq((__ \ "informations" \ "label") -> Seq("validation.nonemptytext")))
     }
 
@@ -219,15 +218,15 @@ class ValidationSpec extends Specification {
           "phones" -> Seq("01.23.45.67.89", "98.76.54.32.10"))))
 
       val infoValidation =
-       ((__ \ "label").validate(nonEmptyText) ~
-        (__ \ "email").validate(optional(email)) ~
-        (__ \ "phones").validate(seq(nonEmptyText))) (ContactInformation.apply _)
+       ((__ \ "label").read(nonEmptyText) ~
+        (__ \ "email").read(optional(email)) ~
+        (__ \ "phones").read(seq(nonEmptyText))) (ContactInformation.apply _)
 
       val contactValidation =
-       ((__ \ "firstname").validate(nonEmptyText) ~
-        (__ \ "lastname").validate(nonEmptyText) ~
-        (__ \ "company").validate[Option[String]] ~
-        (__ \ "informations").validate(seq(infoValidation))) (Contact.apply _)
+       ((__ \ "firstname").read(nonEmptyText) ~
+        (__ \ "lastname").read(nonEmptyText) ~
+        (__ \ "company").read[Option[String]] ~
+        (__ \ "informations").read(seq(infoValidation))) (Contact.apply _)
 
       val expected =
         Contact("Julien", "Tournay", None, Seq(
@@ -235,7 +234,7 @@ class ValidationSpec extends Specification {
 
       contactValidation.validate(validJson) mustEqual(Success(expected))
       contactValidation.validate(invalidJson) mustEqual(Failure(Seq(
-        (__ \ "informations" \"label") -> Seq("validation.nonemptytext"))))
+        (__ \ "informations" \ 0 \"label") -> Seq("validation.nonemptytext"))))
     }
 
   }

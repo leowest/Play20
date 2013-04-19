@@ -27,14 +27,14 @@ object Contacts extends Controller {
     val __ = Path[I]()
 
     val infoValidation =
-      ((__ \ "label").validate(nonEmptyText) ~
-      (__ \ "email").validate(optional(email)) ~
-      (__ \ "phones").validate(seq(pattern("""[0-9.+]+""".r)))) (ContactInformation.apply _)
+      ((__ \ "label").read(nonEmptyText) ~
+      (__ \ "email").read(optional(email)) ~
+      (__ \ "phones").read(seq(pattern("""[0-9.+]+""".r)))) (ContactInformation.apply _)
 
-    ((__ \ "firstname").validate(nonEmptyText) ~
-    (__ \ "lastname").validate(nonEmptyText) ~
-    (__ \ "company").validate[Option[String]] ~
-    (__ \ "informations").validate(seq(infoValidation))) (Contact.apply _)
+    ((__ \ "firstname").read(nonEmptyText) ~
+    (__ \ "lastname").read(nonEmptyText) ~
+    (__ \ "company").read[Option[String]] ~
+    (__ \ "informations").read(seq(infoValidation))) (Contact.apply _)
   }
 
   implicit def contactWrite = {
