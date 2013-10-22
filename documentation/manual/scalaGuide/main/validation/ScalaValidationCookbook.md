@@ -1,6 +1,6 @@
 # Cookbook
 
-> All the examples below are validating Json objects. The API is not dedicated only to Json, it can be used on any type. Please refer to [[Validating Json | ScalaValidationJson]], [[Validating Forms|ScalaValidationJson]], and [[Supporting new types|ScalaValidationExtension]] for more informations.
+> All examples below are validating Json objects. However the API is not dedicated to Json and can be used on any type. Please refer to [[Validating Json | ScalaValidationJson]], [[Validating Forms|ScalaValidationJson]], and [[Supporting new types|ScalaValidationExtension]] for more informations.
 
 ## `Rule`
 
@@ -36,7 +36,7 @@ From[JsValue, Creature](Json.obj())
 
 ### Dependant values
 
-A common example of this use case is the validation of `password` and `password confirmation` field in a signup form.
+A common usecase is to validate a `password` and a `password confirmation` fields in a signup form :
 
 1. First, you need to validate that each field is valid independently
 2. Then, given the two values, you need to validate that they are equals.
@@ -66,7 +66,7 @@ Splitting up the code:
    (__ \ "verify").read(notEmpty)).tupled
 ```
 
-This code creates a `Rule[JsValue, (String, String)]` each of of the String must be non-empty
+This code creates a `Rule[JsValue, (String, String)]` where each String must be non-empty
 
 ```scala
 Rule.uncurry(Rules.equalTo[String])
