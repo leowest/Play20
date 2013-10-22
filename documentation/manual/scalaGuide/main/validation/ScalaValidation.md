@@ -4,7 +4,7 @@
 
 The Play validation API aims to provide a comprehensive toolkit to validate data from any format against user defined rules, and transform them to other types.
 
-It's also a unification of the [[Form Validation API|ScalaForms]], and the [[Json validation API|ScalaJsonCombinators]].
+It's also a unification of the [[Form Validation API|ScalaForms]], and the [[Json validation API|ScalaJsonCombinators]] which are to be superseded by this new API.
 
 Being based on the same concepts as the Json validation API available in previous versions, it should feel very similar to any developer already working with it. The validation API is, rather than a totally new design, a simple generalization of those concepts.
 
