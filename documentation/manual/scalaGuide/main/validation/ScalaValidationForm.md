@@ -21,7 +21,7 @@ def edit(id: Long) = Action {
 
 > Note we are using `play.api.data.mapping.Form`, **NOT** `play.api.data.Form`
 
-Note that `Form.fill` needs to find an implicit `Write[Computer, UrlFormEncoded]`. In this sample, we define it in `Application.scala`:
+Note that `Form.fill` needs to find an implicit `Write[Computer, UrlFormEncoded]`. In this example, we define it in `Application.scala`:
 
 ```scala
 implicit val computerW = To[UrlFormEncoded] { __ =>
@@ -34,8 +34,8 @@ implicit val computerW = To[UrlFormEncoded] { __ =>
 }
 ```
 
-Not only the write object serializes primitive types, it may also formats data when needed.
-In our example dates will be to be displayed using the "yyyy-MM-dd" format.
+Not only the write object serializes primitive types but it formats data when needed. 
+In our example, dates will be displayed in the "yyyy-MM-dd" format.
 
 `Form.fill` writes a `Computer` using `computerW`, and the resulting `Map[String, Seq[String]]` is then used by the `editForm` templates:
 
