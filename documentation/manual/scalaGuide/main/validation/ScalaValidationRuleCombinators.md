@@ -96,7 +96,7 @@ error: No implicit view available from play.api.data.mapping.Path => play.api.da
 
 The Scala compiler is complaining about not finding an implicit function of type `Path => Rule[JsValue, JsValue]`. Indeed, unlike the Json API, you have to provide a method to **lookup** into the data you expect to validate.
 
-Fortunately, such method already exists. All you have to do is import it:
+Fortunately, such method already exists. All you have to do is to import it:
 
 ```scala
 scala> import play.api.data.mapping.json.Rules._
@@ -142,7 +142,7 @@ import play.api.data.mapping.json.Rules._
 val age = (Path \ "user" \ "age").read[JsValue, JsValue]
 ```
 
-And if we apply this new `Rule`:
+Let's apply this new `Rule`:
 
 ```scala
 scala> age.validate(js)
@@ -156,9 +156,9 @@ scala> age.validate(Json.obj())
 res5: play.api.data.mapping.VA[JsValue, JsValue] = Failure(List((/user/age,List(ValidationError(validation.required,WrappedArray())))))
 ```
 
-The `Failure` tells us that it could not find `/user/age` in that `JsValue`.
+The `Failure` informs us that it could not find `/user/age` in that `JsValue`.
 
-That example is nice, but we'd certainly prefer ton extract `age` as an `Int` rather than a `JsValue`.
+That example is nice, but we'd certainly prefer to extract `age` as an `Int` rather than a `JsValue`.
 All we have to do is to change the output type in our `Rule` definition:
 
 ```scala
@@ -172,7 +172,7 @@ scala> age.validate(js)
 res1: play.api.data.mapping.VA[JsValue, Int] = Success(25)
 ```
 
-If we try to parse something that's not an `Int`, we get a `Failure` with the appropriate Path and error:
+If we try to parse something that is not an `Int`, we get a `Failure` with the appropriate Path and error:
 
 ```scala
 scala> (Path \ "user" \ "name").read[JsValue, Int].validate(js)
