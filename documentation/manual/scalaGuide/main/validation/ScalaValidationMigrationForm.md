@@ -1,6 +1,6 @@
-# Migration from the Form API
+# Form API migration
 
-The new Validation API is rather different than the `Form` API.
+The new Validation API differs significantly from the `Form` API.
 
 ```scala
 case class Company(id: Pk[Long] = NotAssigned, name: String)
