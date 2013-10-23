@@ -7,9 +7,9 @@ This `Form` helpers use `Rule` to validate data, and `Write` to format form data
 
 ## Fill a form with initial default values
 
-Consider the following example form play sample application "computer database":
+Consider the following example, from play's sample "computer database" application :
 
-The `edit` action renders a form with all the computer data pre-filled. All we have to do is to create a `Form` instance using `Form.fill`:
+The `edit` action renders a form pre-filled with `computer` data. All we have to do is to create a `Form` instance using `Form.fill`:
 
 ```scala
 def edit(id: Long) = Action {
@@ -21,7 +21,7 @@ def edit(id: Long) = Action {
 
 > Note we are using `play.api.data.mapping.Form`, **NOT** `play.api.data.Form`
 
-Note that `Form.fill` needs to find an implicit `Write[Computer, UrlFormEncoded]`. In this sample, that `Write` is defined in `Application.scala`:
+Note that `Form.fill` needs to find an implicit `Write[Computer, UrlFormEncoded]`. In this sample, we define it in `Application.scala`:
 
 ```scala
 implicit val computerW = To[UrlFormEncoded] { __ =>
@@ -34,8 +34,8 @@ implicit val computerW = To[UrlFormEncoded] { __ =>
 }
 ```
 
-The write object is not only used to serialize primitive types, it also formats data.
-For example, we want dates to be display using this format: "yyyy-MM-dd".
+Not only the write object serializes primitive types, it may also formats data when needed.
+In our example dates will be to be displayed using the "yyyy-MM-dd" format.
 
 `Form.fill` writes a `Computer` using `computerW`, and the resulting `Map[String, Seq[String]]` is then used by the `editForm` templates:
 
@@ -47,7 +47,7 @@ For example, we want dates to be display using this format: "yyyy-MM-dd".
 }
 ```
 
-From there, all the [[template helpers|ScalaFormHelpers]] work exactly as they used to. Form example to create an input of type text:
+From there, all the [[template helpers|ScalaFormHelpers]] work exactly as they used to :
 
 ```scala
 @inputText(computerForm("name"), '_label -> "Computer name")
@@ -55,8 +55,7 @@ From there, all the [[template helpers|ScalaFormHelpers]] work exactly as they u
 
 ## Binding form data
 
-The Form object simply uses a `Rule` to bind and validate data from a request body.
-Here's a example:
+The Form object uses a `Rule` to bind and validate data from a request body :
 
 ```scala
 def update(id: Long) = Action(parse.urlFormEncoded) { implicit request =>
@@ -71,7 +70,8 @@ def update(id: Long) = Action(parse.urlFormEncoded) { implicit request =>
 }
 ```
 
-The Rule `computerValidation` is defined bellow:
+The Rule `computerValidation` is defined below.
+Any custom format should match the `Form.fill` definition and be specified as a `read()` option.
 
 ```scala
 implicit val computerValidation = From[UrlFormEncoded] { __ =>
