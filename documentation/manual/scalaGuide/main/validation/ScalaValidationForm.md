@@ -1,9 +1,9 @@
 # Form template helpers
 
 The validation API is compatible with play's existing [[template helpers|ScalaFormHelpers]].
-There's one difference thought, instead of using `play.api.data.Form`, **you need to use `play.api.data.mapping.Form`**.
+There's one difference though : **you have to use `play.api.data.mapping.Form`** instead of using `play.api.data.Form`.
 
-This `Form` helpers using `Rule` to validate data, and `Write` to format form data:
+This `Form` helpers use `Rule` to validate data, and `Write` to format form data:
 
 ## Fill a form with initial default values
 
