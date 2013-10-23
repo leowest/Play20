@@ -2,15 +2,19 @@
 
 ## Introduction
 
-We've already explained what a `Rule` is in [[the previous chapter | ScalaValidationRule]]. Those examples were only covering simple rules. Most of the time, rules are used to validate and transform complex hierarchical objects, like [[Json|ScalaValidationJson]], or [[Forms|ScalaValidationJson]].
+We've already explained what a `Rule` is in [[the previous chapter | ScalaValidationRule]]. 
+Those examples were only covering simple rules. However most of the time, rules are used to validate and transform complex hierarchical objects, like [[Json|ScalaValidationJson]], or [[Forms|ScalaValidationForm]].
 
-In the validation API, we create complex object rules by combining simple rules. This chapter details the creation of those complex rules.
+The validation API allows complex object rules creation by combining simple rules together. This chapter explains how to create complex rules.
 
-> All the examples below are validating Json objects. The API is not dedicated only to Json, it can be used on any type. Please refer to [[Validating Json | ScalaValidationJson]], [[Validating Forms|ScalaValidationJson]], and [[Supporting new types|ScalaValidationExtension]] for more informations.
+> Despite examples below are validating Json objects, the API is not dedicated only to Json and can be used on any type. 
+> Please refer to [[Validating Json | ScalaValidationJson]], [[Validating Forms|ScalaValidationForm]], and [[Supporting new types|ScalaValidationExtension]] for more informations.
 
 ## Path
 
-The validation API defines a class named `Path`. A `Path` represents a location. Contrarely to `JsPath`, it's not related to any specific type, it's just a location in some data. Most of the time, a `Path` is our entry point into the Validation API.
+The validation API defines a class named `Path`. A `Path` represents the location of a data among a complex object. 
+Unlike `JsPath` it is not related to any specific type. It's just a location in some data.
+Most of the time, a `Path` is our entry point into the Validation API.
 
 A `Path` is declared using this syntax:
 
@@ -24,7 +28,7 @@ p: play.api.data.mapping.Path = /foo/bar
 
 `Path` here is the empty `Path` object. One may call it the root path.
 
-A path can also reference an index:
+A path can also reference indexed data, such as a `Seq`
 
 ```scala
 scala> val p = Path \ "foo" \ 0
@@ -53,9 +57,9 @@ val js: JsValue = Json.parse("""{
 }""")
 ```
 
-The first step before trying to validate anything is be capable of accessing a fragment of the object.
+The first step before validating anything is to be able to access a fragment of the complex object.
 
-Assuming you'd like to validate that `friend` exists and is valid in this json, you first need to access the object located at `user.friend`.
+Assuming you'd like to validate that `friend` exists and is valid in this json, you first need to access the object located at `user.friend` (Javascript notation).
 
 #### The `read` method
 
@@ -67,7 +71,7 @@ scala> val location: Path = Path \ "user" \ "friend"
 location: play.api.data.mapping.Path = /user/friend
 ```
 
-`Path` has a `read[I, O]` method, where `I` represents the input we're trying to parse, and `O` is the output type. For example, `(Path \ "foo").read[JsValue, Int]`, means we want to try to read a value located at path `/foo` in a `JsValue` as an `Int`.
+`Path` has a `read[I, O]` method, where `I` represents the input we're trying to parse, and `O` the output type. For example, `(Path \ "foo").read[JsValue, Int]`, will try to read a value located at path `/foo` in a `JsValue` as an `Int`.
 
 But let's try something much easier for now:
 
@@ -79,7 +83,8 @@ val location: Path = Path \ "user" \ "friend"
 val findFriend: Rule[JsValue, JsValue] = location.read[JsValue, JsValue]
 ```
 
-`location.read[JsValue, JsValue]` means the we're trying to lookup at `location` in a `JsValue`, and we expect to find a `JsValue` there. Effectively, we're just defining a `Rule` that is picking a subtree in a `JsValue`.
+`location.read[JsValue, JsValue]` means we're trying to lookup at `location` in a `JsValue`, and we expect to find a `JsValue` there. 
+In fact we're defining a `Rule` that is picking a subtree in a `JsValue`.
 
 If you try to run that code, the compiler gives you the following error:
 
